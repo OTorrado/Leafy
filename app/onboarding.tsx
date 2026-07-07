@@ -7,7 +7,7 @@ import { useOnboarding } from '@/components/onboarding-provider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
+import { Colors, DisplayFont } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { requestNotificationPermission } from '@/lib/notifications';
 import { OnboardingAnswers } from '@/lib/onboarding';
@@ -130,12 +130,12 @@ export default function OnboardingScreen() {
                 contentFit="contain"
                 nativeControls={false}
               />
-              <ThemedText type="title" style={styles.centerText}>
-                Welcome to Leafy
+              <ThemedText style={[styles.centerText, styles.buddyTitle]}>
+                Hi, I’m Leafy 🌱
               </ThemedText>
-              <ThemedText style={[styles.centerText, styles.muted]}>
-                Identify your plants, learn exactly how to care for them, and never forget to water
-                again. Let’s get to know you first.
+              <ThemedText style={[styles.centerText, styles.buddyBody]}>
+                I’ll be your plant buddy — here to help you keep every plant happy and thriving.
+                Let’s get to know each other first!
               </ThemedText>
             </View>
           )}
@@ -174,7 +174,7 @@ export default function OnboardingScreen() {
           {step.kind === 'affirmation' && (
             <View style={styles.centered}>
               <ThemedText style={styles.hero}>🌿</ThemedText>
-              <ThemedText type="title" style={styles.centerText}>
+              <ThemedText type="title" style={[styles.centerText, styles.displayHeading]}>
                 Leafy’s got you
               </ThemedText>
               <View style={styles.bullets}>
@@ -188,7 +188,7 @@ export default function OnboardingScreen() {
           {step.kind === 'notifications' && (
             <View style={styles.centered}>
               <ThemedText style={styles.hero}>🔔</ThemedText>
-              <ThemedText type="title" style={styles.centerText}>
+              <ThemedText type="title" style={[styles.centerText, styles.displayHeading]}>
                 Never forget to water again
               </ThemedText>
               <ThemedText style={[styles.centerText, styles.muted]}>
@@ -282,11 +282,23 @@ const styles = StyleSheet.create({
   body: { flex: 1, justifyContent: 'center' },
   centered: { alignItems: 'center', gap: 16 },
   hero: { fontSize: 72, lineHeight: 84 },
-  character: { width: 220, height: 220, backgroundColor: 'transparent' },
+  character: { width: 300, height: 300, backgroundColor: 'transparent' },
+  buddyTitle: {
+    fontFamily: DisplayFont.semibold,
+    fontSize: 30,
+    lineHeight: 38,
+  },
+  buddyBody: {
+    fontFamily: DisplayFont.regular,
+    fontSize: 18,
+    lineHeight: 26,
+    opacity: 0.75,
+  },
   centerText: { textAlign: 'center' },
   muted: { opacity: 0.7 },
   question: { gap: 28 },
-  questionText: { textAlign: 'left' },
+  questionText: { textAlign: 'left', fontFamily: DisplayFont.semibold, lineHeight: 40 },
+  displayHeading: { fontFamily: DisplayFont.semibold },
   options: { gap: 12 },
   option: {
     flexDirection: 'row',

@@ -1,3 +1,10 @@
+import {
+  Fredoka_400Regular,
+  Fredoka_500Medium,
+  Fredoka_600SemiBold,
+  Fredoka_700Bold,
+  useFonts,
+} from '@expo-google-fonts/fredoka';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -18,15 +25,23 @@ configureNotificationHandler();
 
 function RootNavigator() {
   const { isLoading, hasOnboarded } = useOnboarding();
+  const [fontsLoaded, fontError] = useFonts({
+    Fredoka_400Regular,
+    Fredoka_500Medium,
+    Fredoka_600SemiBold,
+    Fredoka_700Bold,
+  });
+
+  const ready = !isLoading && (fontsLoaded || !!fontError);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (ready) {
       SplashScreen.hideAsync();
     }
-  }, [isLoading]);
+  }, [ready]);
 
-  // Keep the splash screen up until we know whether onboarding is done.
-  if (isLoading) {
+  // Keep the splash screen up until onboarding state and fonts are ready.
+  if (!ready) {
     return null;
   }
 
