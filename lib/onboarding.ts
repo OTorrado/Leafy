@@ -3,8 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const ANSWERS_KEY = 'leafy.onboarding.answers.v1';
 const COMPLETE_KEY = 'leafy.onboarding.complete.v1';
 
+export type YesNo = 'yes' | 'no';
 export type PlantLocation = 'indoor' | 'outdoor' | 'both';
-export type WateringMemory = 'always' | 'sometimes' | 'never';
 export type CareConfidence = 'confident' | 'unsure' | 'no_idea';
 export type SeeksHelp = 'yes' | 'sometimes' | 'no';
 export type Overwhelmed = 'yes' | 'a_bit' | 'no';
@@ -15,7 +15,7 @@ export type Overwhelmed = 'yes' | 'a_bit' | 'no';
  */
 export type OnboardingAnswers = {
   location?: PlantLocation;
-  forgetsWatering?: WateringMemory;
+  unsureWatering?: YesNo;
   careConfidence?: CareConfidence;
   seeksHelp?: SeeksHelp;
   overwhelmed?: Overwhelmed;

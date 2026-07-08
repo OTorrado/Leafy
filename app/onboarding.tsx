@@ -17,7 +17,7 @@ import { OnboardingAnswers } from '@/lib/onboarding';
 type Option = {
   value: string;
   label: string;
-  emoji: string;
+  emoji?: string;
   /** Shown under the label in the card variant. */
   description?: string;
   /** Badge icon in the card variant. */
@@ -31,7 +31,9 @@ type QuestionStep = {
   field: keyof OnboardingAnswers;
   question: string;
   subtitle?: string;
-  variant?: 'list' | 'cards';
+  variant?: 'list' | 'cards' | 'hero';
+  /** Hero illustration shown above the question in the 'hero' variant. */
+  image?: number;
   options: Option[];
 };
 
@@ -70,12 +72,13 @@ const STEPS: Step[] = [
   },
   {
     kind: 'question',
-    field: 'forgetsWatering',
-    question: 'Do you often forget when to water them?',
+    field: 'unsureWatering',
+    variant: 'hero',
+    question: 'Are you unsure how much water your plant needs?',
+    image: require('@/assets/images/onboarding/forgot-water.png'),
     options: [
-      { value: 'always', label: 'All the time', emoji: '😅' },
-      { value: 'sometimes', label: 'Sometimes', emoji: '🤔' },
-      { value: 'never', label: 'Never, I’ve got a system', emoji: '💪' },
+      { value: 'yes', label: 'Yes' },
+      { value: 'no', label: 'No' },
     ],
   },
   {
@@ -199,6 +202,39 @@ export default function OnboardingScreen() {
                   ))}
                 </View>
               </ScrollView>
+            ) : step.variant === 'hero' ? (
+              <View style={styles.heroQuestion}>
+                {step.image && (
+                  <Image source={step.image} style={styles.heroImage} contentFit="contain" />
+                )}
+                <ThemedText
+                  type="title"
+                  style={[styles.centerText, styles.displayHeading, styles.heroQuestionText]}>
+                  {step.question}
+                </ThemedText>
+                <View style={styles.yesNoRow}>
+                  {step.options.map((opt) => {
+                    const selected = answers[step.field] === opt.value;
+                    return (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => {
+                          updateAnswers({ [step.field]: opt.value } as Partial<OnboardingAnswers>);
+                          goNext();
+                        }}
+                        style={[
+                          styles.yesNoButton,
+                          selected && { backgroundColor: Brand.green },
+                        ]}>
+                        <ThemedText
+                          style={[styles.yesNoLabel, selected && { color: '#ffffff' }]}>
+                          {opt.label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
             ) : (
               <View style={styles.question}>
                 <ThemedText type="title" style={styles.questionText}>
@@ -452,6 +488,19 @@ const styles = StyleSheet.create({
   cardText: { flex: 1, gap: 2 },
   cardLabel: { fontFamily: DisplayFont.semibold, fontSize: 20, color: Brand.green },
   cardDescription: { fontSize: 14, color: '#5b665e' },
+  heroQuestion: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
+  heroImage: { width: 260, height: 260 },
+  heroQuestionText: { fontSize: 26, lineHeight: 32, paddingHorizontal: 8 },
+  yesNoRow: { flexDirection: 'row', gap: 14, alignSelf: 'stretch', marginTop: 4 },
+  yesNoButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Brand.green,
+    alignItems: 'center',
+  },
+  yesNoLabel: { fontFamily: DisplayFont.semibold, fontSize: 18, color: Brand.green },
   bullets: { gap: 16, marginTop: 12, alignSelf: 'stretch' },
   bulletRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   bulletText: { flex: 1, fontSize: 16 },
