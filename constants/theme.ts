@@ -27,6 +27,12 @@ export const Colors = {
   },
 };
 
+/** Leafy brand accents. */
+export const Brand = {
+  green: '#4C9A4E',
+  greenSoft: '#E7F3E6',
+};
+
 /** Cute, rounded display font used for headings and Leafy's voice. */
 export const DisplayFont = {
   regular: 'Fredoka_400Regular',

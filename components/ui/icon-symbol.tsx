@@ -22,6 +22,7 @@ const MAPPING = {
   'camera.fill': 'photo-camera',
   'magnifyingglass': 'search',
   'bell.fill': 'notifications',
+  'sun.max.fill': 'wb-sunny',
 } as IconMapping;
 
 /**

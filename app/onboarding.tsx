@@ -1,22 +1,38 @@
+import { Image } from 'expo-image';
+import { SymbolViewProps } from 'expo-symbols';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useOnboarding } from '@/components/onboarding-provider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, DisplayFont } from '@/constants/theme';
+import { Brand, Colors, DisplayFont } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { requestNotificationPermission } from '@/lib/notifications';
 import { OnboardingAnswers } from '@/lib/onboarding';
+
+type Option = {
+  value: string;
+  label: string;
+  emoji: string;
+  /** Shown under the label in the card variant. */
+  description?: string;
+  /** Badge icon in the card variant. */
+  icon?: SymbolViewProps['name'];
+  /** require()'d image for the card variant; falls back to a tinted placeholder. */
+  image?: number;
+};
 
 type QuestionStep = {
   kind: 'question';
   field: keyof OnboardingAnswers;
   question: string;
-  options: { value: string; label: string; emoji: string }[];
+  subtitle?: string;
+  variant?: 'list' | 'cards';
+  options: Option[];
 };
 
 type InfoStep = { kind: 'welcome' | 'affirmation' | 'notifications' };
@@ -30,11 +46,26 @@ const STEPS: Step[] = [
   {
     kind: 'question',
     field: 'location',
-    question: 'Where do you keep most of your plants?',
+    question: 'Where is your plant?',
+    subtitle: 'This helps us give you the best care tips',
+    variant: 'cards',
     options: [
-      { value: 'indoor', label: 'Indoors', emoji: '🪴' },
-      { value: 'outdoor', label: 'Outdoors', emoji: '🌳' },
-      { value: 'both', label: 'A bit of both', emoji: '🌱' },
+      {
+        value: 'indoor',
+        label: 'Indoor',
+        emoji: '🪴',
+        description: 'My plant is inside my home',
+        icon: 'house.fill',
+        image: require('@/assets/images/onboarding/new-indoor.png'),
+      },
+      {
+        value: 'outdoor',
+        label: 'Outdoor',
+        emoji: '🌳',
+        description: 'My plant is outside in the open',
+        icon: 'sun.max.fill',
+        image: require('@/assets/images/onboarding/new-outdoor.png'),
+      },
     ],
   },
   {
@@ -102,8 +133,6 @@ export default function OnboardingScreen() {
     setIndex((i) => i + 1);
   };
 
-  const goBack = () => setIndex((i) => Math.max(0, i - 1));
-
   const complete = async () => {
     setBusy(true);
     await finish();
@@ -140,36 +169,66 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {step.kind === 'question' && (
-            <View style={styles.question}>
-              <ThemedText type="title" style={styles.questionText}>
-                {step.question}
-              </ThemedText>
-              <View style={styles.options}>
-                {step.options.map((opt) => {
-                  const selected = answers[step.field] === opt.value;
-                  return (
-                    <Pressable
+          {step.kind === 'question' &&
+            (step.variant === 'cards' ? (
+              <ScrollView
+                style={styles.cardsScroll}
+                contentContainerStyle={styles.cardsContent}
+                showsVerticalScrollIndicator={false}>
+                <ThemedText
+                  type="title"
+                  style={[styles.centerText, styles.displayHeading, styles.cardsTitle]}>
+                  {step.question}
+                </ThemedText>
+                {step.subtitle && (
+                  <ThemedText style={[styles.centerText, styles.cardsSubtitle]}>
+                    {step.subtitle}
+                  </ThemedText>
+                )}
+                <View style={styles.cards}>
+                  {step.options.map((opt) => (
+                    <OptionCard
                       key={opt.value}
+                      option={opt}
+                      selected={answers[step.field] === opt.value}
                       onPress={() => {
                         updateAnswers({ [step.field]: opt.value } as Partial<OnboardingAnswers>);
                         goNext();
                       }}
-                      style={[
-                        styles.option,
-                        { borderColor: selected ? tint : Colors[scheme].icon + '55' },
-                        selected && { backgroundColor: tint + '18' },
-                      ]}>
-                      <ThemedText style={styles.optionEmoji}>{opt.emoji}</ThemedText>
-                      <ThemedText type="defaultSemiBold" style={styles.optionLabel}>
-                        {opt.label}
-                      </ThemedText>
-                    </Pressable>
-                  );
-                })}
+                    />
+                  ))}
+                </View>
+              </ScrollView>
+            ) : (
+              <View style={styles.question}>
+                <ThemedText type="title" style={styles.questionText}>
+                  {step.question}
+                </ThemedText>
+                <View style={styles.options}>
+                  {step.options.map((opt) => {
+                    const selected = answers[step.field] === opt.value;
+                    return (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => {
+                          updateAnswers({ [step.field]: opt.value } as Partial<OnboardingAnswers>);
+                          goNext();
+                        }}
+                        style={[
+                          styles.option,
+                          { borderColor: selected ? tint : Colors[scheme].icon + '55' },
+                          selected && { backgroundColor: tint + '18' },
+                        ]}>
+                        <ThemedText style={styles.optionEmoji}>{opt.emoji}</ThemedText>
+                        <ThemedText type="defaultSemiBold" style={styles.optionLabel}>
+                          {opt.label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
-          )}
+            ))}
 
           {step.kind === 'affirmation' && (
             <View style={styles.centered}>
@@ -206,13 +265,7 @@ export default function OnboardingScreen() {
                 <ThemedText style={[styles.skipText, { color: tint }]}>Maybe later</ThemedText>
               </Pressable>
             </>
-          ) : step.kind === 'question' ? (
-            index > 0 && (
-              <Pressable onPress={goBack} style={styles.skip}>
-                <ThemedText style={[styles.skipText, { color: Colors[scheme].icon }]}>Back</ThemedText>
-              </Pressable>
-            )
-          ) : (
+          ) : step.kind === 'question' ? null : (
             <PrimaryButton tint={tint} label="Continue" onPress={goNext} disabled={busy} />
           )}
           {busy && <ActivityIndicator style={styles.busy} color={tint} />}
@@ -236,6 +289,46 @@ function ProgressBar({ current, total, tint }: { current: number; total: number;
         />
       ))}
     </View>
+  );
+}
+
+function OptionCard({
+  option,
+  selected,
+  onPress,
+}: {
+  option: Option;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.card, pressed && { opacity: 0.92 }]}>
+      <View
+        style={[
+          styles.cardImageWrap,
+          !option.image && { backgroundColor: Brand.greenSoft },
+          selected && { borderColor: Brand.green },
+        ]}>
+        {option.image ? (
+          <Image source={option.image} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : (
+          <ThemedText style={styles.cardPlaceholderEmoji}>{option.emoji}</ThemedText>
+        )}
+      </View>
+      <View style={[styles.cardInfo, selected && { borderColor: Brand.green }]}>
+        <View style={styles.cardBadge}>
+          <IconSymbol name={option.icon ?? 'leaf.fill'} size={26} color={Brand.green} />
+        </View>
+        <View style={styles.cardText}>
+          <ThemedText style={styles.cardLabel}>{option.label}</ThemedText>
+          {option.description && (
+            <ThemedText style={styles.cardDescription}>{option.description}</ThemedText>
+          )}
+        </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -310,6 +403,55 @@ const styles = StyleSheet.create({
   },
   optionEmoji: { fontSize: 26 },
   optionLabel: { fontSize: 17 },
+  cardsScroll: { flex: 1 },
+  cardsContent: { paddingVertical: 8, paddingBottom: 8, gap: 6, flexGrow: 1, justifyContent: 'center' },
+  cardsTitle: { fontSize: 28, lineHeight: 34 },
+  cardsSubtitle: { fontSize: 16, opacity: 0.6, marginBottom: 8 },
+  cards: { gap: 18, marginTop: 4 },
+  card: {
+    width: '100%',
+    maxWidth: 320,
+    alignSelf: 'center',
+  },
+  cardImageWrap: {
+    width: '100%',
+    aspectRatio: 1448 / 1086,
+    borderRadius: 22,
+    borderWidth: 3,
+    borderColor: 'transparent',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardPlaceholderEmoji: { fontSize: 64 },
+  cardInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginTop: -44,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  cardBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Brand.greenSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardText: { flex: 1, gap: 2 },
+  cardLabel: { fontFamily: DisplayFont.semibold, fontSize: 20, color: Brand.green },
+  cardDescription: { fontSize: 14, color: '#5b665e' },
   bullets: { gap: 16, marginTop: 12, alignSelf: 'stretch' },
   bulletRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   bulletText: { flex: 1, fontSize: 16 },
