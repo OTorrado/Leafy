@@ -23,6 +23,8 @@ const MAPPING = {
   'magnifyingglass': 'search',
   'bell.fill': 'notifications',
   'sun.max.fill': 'wb-sunny',
+  'checkmark': 'check',
+  'xmark': 'close',
 } as IconMapping;
 
 /**

@@ -41,6 +41,13 @@ export const DisplayFont = {
   bold: 'Fredoka_700Bold',
 };
 
+/** Clean UI font for buttons and controls. */
+export const UIFont = {
+  medium: 'Poppins_500Medium',
+  semibold: 'Poppins_600SemiBold',
+  bold: 'Poppins_700Bold',
+};
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

@@ -9,7 +9,7 @@ import { useOnboarding } from '@/components/onboarding-provider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Brand, Colors, DisplayFont } from '@/constants/theme';
+import { Brand, Colors, DisplayFont, UIFont } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { requestNotificationPermission } from '@/lib/notifications';
 import { OnboardingAnswers } from '@/lib/onboarding';
@@ -212,9 +212,9 @@ export default function OnboardingScreen() {
                   style={[styles.centerText, styles.displayHeading, styles.heroQuestionText]}>
                   {step.question}
                 </ThemedText>
-                <View style={styles.yesNoRow}>
+                <View style={styles.yesNoGroup}>
                   {step.options.map((opt) => {
-                    const selected = answers[step.field] === opt.value;
+                    const isYes = opt.value === 'yes';
                     return (
                       <Pressable
                         key={opt.value}
@@ -222,12 +222,12 @@ export default function OnboardingScreen() {
                           updateAnswers({ [step.field]: opt.value } as Partial<OnboardingAnswers>);
                           goNext();
                         }}
-                        style={[
-                          styles.yesNoButton,
-                          selected && { backgroundColor: Brand.green },
+                        style={({ pressed }) => [
+                          isYes ? styles.primaryBtn : styles.secondaryBtn,
+                          pressed && { opacity: 0.85 },
                         ]}>
                         <ThemedText
-                          style={[styles.yesNoLabel, selected && { color: '#ffffff' }]}>
+                          style={isYes ? styles.primaryBtnLabel : styles.secondaryBtnLabel}>
                           {opt.label}
                         </ThemedText>
                       </Pressable>
@@ -491,16 +491,32 @@ const styles = StyleSheet.create({
   heroQuestion: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
   heroImage: { width: 260, height: 260 },
   heroQuestionText: { fontSize: 26, lineHeight: 32, paddingHorizontal: 8 },
-  yesNoRow: { flexDirection: 'row', gap: 14, alignSelf: 'stretch', marginTop: 4 },
-  yesNoButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: Brand.green,
+  yesNoGroup: { alignSelf: 'stretch', gap: 14, marginTop: 56 },
+  primaryBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    minHeight: 68,
+    borderRadius: 30,
+    backgroundColor: '#4E9F58',
+    shadowColor: '#4E9F58',
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
-  yesNoLabel: { fontFamily: DisplayFont.semibold, fontSize: 18, color: Brand.green },
+  primaryBtnLabel: { fontFamily: UIFont.semibold, fontSize: 20, color: '#ffffff' },
+  secondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    gap: 10,
+    minHeight: 48,
+  },
+  secondaryBtnLabel: { fontFamily: UIFont.semibold, fontSize: 17, color: '#5F6C64' },
   bullets: { gap: 16, marginTop: 12, alignSelf: 'stretch' },
   bulletRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   bulletText: { flex: 1, fontSize: 16 },
