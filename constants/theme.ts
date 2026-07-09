@@ -48,6 +48,13 @@ export const UIFont = {
   bold: 'Poppins_700Bold',
 };
 
+/** Catchy display font for question prompts. */
+export const HeadingFont = {
+  medium: 'Quicksand_500Medium',
+  semibold: 'Quicksand_600SemiBold',
+  bold: 'Quicksand_700Bold',
+};
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

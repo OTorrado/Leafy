@@ -5,9 +5,6 @@ const COMPLETE_KEY = 'leafy.onboarding.complete.v1';
 
 export type YesNo = 'yes' | 'no';
 export type PlantLocation = 'indoor' | 'outdoor' | 'both';
-export type CareConfidence = 'confident' | 'unsure' | 'no_idea';
-export type SeeksHelp = 'yes' | 'sometimes' | 'no';
-export type Overwhelmed = 'yes' | 'a_bit' | 'no';
 
 /**
  * Answers captured during onboarding. Stored on-device only (no account).
@@ -16,9 +13,9 @@ export type Overwhelmed = 'yes' | 'a_bit' | 'no';
 export type OnboardingAnswers = {
   location?: PlantLocation;
   unsureWatering?: YesNo;
-  careConfidence?: CareConfidence;
-  seeksHelp?: SeeksHelp;
-  overwhelmed?: Overwhelmed;
+  unsureSunlight?: YesNo;
+  seeksHelp?: YesNo;
+  overwhelmed?: YesNo;
 };
 
 export async function loadOnboarding(): Promise<{

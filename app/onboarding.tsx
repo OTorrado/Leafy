@@ -1,15 +1,20 @@
 import { Image } from 'expo-image';
 import { SymbolViewProps } from 'expo-symbols';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useOnboarding } from '@/components/onboarding-provider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Brand, Colors, DisplayFont, UIFont } from '@/constants/theme';
+import { Brand, Colors, DisplayFont, HeadingFont, UIFont } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { requestNotificationPermission } from '@/lib/notifications';
 import { OnboardingAnswers } from '@/lib/onboarding';
@@ -42,6 +47,7 @@ type InfoStep = { kind: 'welcome' | 'affirmation' | 'notifications' };
 type Step = QuestionStep | InfoStep;
 
 const LEAFY_INTRO = require('@/assets/images/leafy-gif/leafy-model-intro.mp4');
+const LEAFY_GOT_YOU = require('@/assets/images/leafy-gif/got-you.mp4');
 
 const STEPS: Step[] = [
   { kind: 'welcome' },
@@ -83,32 +89,35 @@ const STEPS: Step[] = [
   },
   {
     kind: 'question',
-    field: 'careConfidence',
-    question: 'Do you know if they get enough water and sun?',
+    field: 'unsureSunlight',
+    variant: 'hero',
+    question: 'Are you unsure if they’re getting enough sunlight?',
+    image: require('@/assets/images/onboarding/new-sunblight.png'),
     options: [
-      { value: 'confident', label: 'I’m pretty confident', emoji: '☀️' },
-      { value: 'unsure', label: 'Not really sure', emoji: '🤷' },
-      { value: 'no_idea', label: 'Honestly, no idea', emoji: '😬' },
+      { value: 'yes', label: 'Yes' },
+      { value: 'no', label: 'No' },
     ],
   },
   {
     kind: 'question',
     field: 'seeksHelp',
-    question: 'Do you look for ways to keep your plants alive?',
+    variant: 'hero',
+    question: 'Do you anxiously search for ways to keep your plants alive?',
+    image: require('@/assets/images/onboarding/dead-plant.png'),
     options: [
-      { value: 'yes', label: 'All the time', emoji: '🔍' },
-      { value: 'sometimes', label: 'Now and then', emoji: '🌿' },
-      { value: 'no', label: 'Not really', emoji: '🙅' },
+      { value: 'yes', label: 'Yes' },
+      { value: 'no', label: 'No' },
     ],
   },
   {
     kind: 'question',
     field: 'overwhelmed',
-    question: 'Do you feel overwhelmed by plant advice online?',
+    variant: 'hero',
+    question: 'Do you feel overwhelmed by the amount of plant info out there?',
+    image: require('@/assets/images/onboarding/overwhelmed.png'),
     options: [
-      { value: 'yes', label: 'Yes, totally', emoji: '🌊' },
-      { value: 'a_bit', label: 'A little', emoji: '😵' },
-      { value: 'no', label: 'Not really', emoji: '😌' },
+      { value: 'yes', label: 'Yes' },
+      { value: 'no', label: 'No' },
     ],
   },
   { kind: 'affirmation' },
@@ -121,6 +130,12 @@ export default function OnboardingScreen() {
   const { answers, updateAnswers, finish } = useOnboarding();
 
   const player = useVideoPlayer(LEAFY_INTRO, (player) => {
+    player.loop = true;
+    player.muted = true;
+    player.play();
+  });
+
+  const gotYouPlayer = useVideoPlayer(LEAFY_GOT_YOU, (player) => {
     player.loop = true;
     player.muted = true;
     player.play();
@@ -151,7 +166,7 @@ export default function OnboardingScreen() {
   return (
     <ThemedView style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <ProgressBar current={index} total={STEPS.length} tint={tint} />
+        <ProgressBar current={index} total={STEPS.length} />
 
         <View style={styles.body}>
           {step.kind === 'welcome' && (
@@ -204,14 +219,14 @@ export default function OnboardingScreen() {
               </ScrollView>
             ) : step.variant === 'hero' ? (
               <View style={styles.heroQuestion}>
-                {step.image && (
-                  <Image source={step.image} style={styles.heroImage} contentFit="contain" />
-                )}
                 <ThemedText
                   type="title"
                   style={[styles.centerText, styles.displayHeading, styles.heroQuestionText]}>
                   {step.question}
                 </ThemedText>
+                {step.image && (
+                  <Image source={step.image} style={styles.heroImage} contentFit="contain" />
+                )}
                 <View style={styles.yesNoGroup}>
                   {step.options.map((opt) => {
                     const isYes = opt.value === 'yes';
@@ -268,14 +283,20 @@ export default function OnboardingScreen() {
 
           {step.kind === 'affirmation' && (
             <View style={styles.centered}>
-              <ThemedText style={styles.hero}>🌿</ThemedText>
-              <ThemedText type="title" style={[styles.centerText, styles.displayHeading]}>
+              <ThemedText style={[styles.centerText, styles.heroQuestionText]}>
                 Leafy’s got you
               </ThemedText>
+              <VideoView
+                player={gotYouPlayer}
+                style={styles.affirmationVideo}
+                contentFit="contain"
+                nativeControls={false}
+              />
               <View style={styles.bullets}>
-                <Bullet tint={tint} text="Snap a photo to identify any plant instantly" />
-                <Bullet tint={tint} text="Get clear, no-nonsense care guides — no rabbit holes" />
-                <Bullet tint={tint} text="Smart reminders so watering is never a guess again" />
+                <Bullet text="Snap a photo to identify any plant instantly" />
+                <Bullet text="Watering reminders so you never forget again" />
+                <Bullet text="Know if they’re getting enough water & light" />
+                <Bullet text="Simple, clear care tips — no overwhelm" />
               </View>
             </View>
           )}
@@ -311,19 +332,21 @@ export default function OnboardingScreen() {
   );
 }
 
-function ProgressBar({ current, total, tint }: { current: number; total: number; tint: string }) {
-  const scheme = useColorScheme() ?? 'light';
+function ProgressBar({ current, total }: { current: number; total: number }) {
+  const progress = (current + 1) / total;
+  const value = useSharedValue(progress);
+
+  useEffect(() => {
+    value.value = withTiming(progress, { duration: 400 });
+  }, [progress, value]);
+
+  const fillStyle = useAnimatedStyle(() => ({
+    width: `${value.value * 100}%`,
+  }));
+
   return (
-    <View style={styles.progressRow}>
-      {Array.from({ length: total }).map((_, i) => (
-        <View
-          key={i}
-          style={[
-            styles.progressSegment,
-            { backgroundColor: i <= current ? tint : Colors[scheme].icon + '33' },
-          ]}
-        />
-      ))}
+    <View style={styles.progressTrack}>
+      <Animated.View style={[styles.progressFill, fillStyle]} />
     </View>
   );
 }
@@ -368,10 +391,12 @@ function OptionCard({
   );
 }
 
-function Bullet({ text, tint }: { text: string; tint: string }) {
+function Bullet({ text }: { text: string }) {
   return (
     <View style={styles.bulletRow}>
-      <IconSymbol name="leaf.fill" size={20} color={tint} />
+      <View style={styles.bulletCheck}>
+        <IconSymbol name="checkmark" size={11} color="#ffffff" />
+      </View>
       <ThemedText style={styles.bulletText}>{text}</ThemedText>
     </View>
   );
@@ -406,8 +431,18 @@ function PrimaryButton({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1, paddingHorizontal: 24 },
-  progressRow: { flexDirection: 'row', gap: 6, paddingVertical: 16 },
-  progressSegment: { flex: 1, height: 4, borderRadius: 2 },
+  progressTrack: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#E7EFE8',
+    overflow: 'hidden',
+    marginVertical: 16,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 5,
+    backgroundColor: Brand.green,
+  },
   body: { flex: 1, justifyContent: 'center' },
   centered: { alignItems: 'center', gap: 16 },
   hero: { fontSize: 72, lineHeight: 84 },
@@ -441,7 +476,7 @@ const styles = StyleSheet.create({
   optionLabel: { fontSize: 17 },
   cardsScroll: { flex: 1 },
   cardsContent: { paddingVertical: 8, paddingBottom: 8, gap: 6, flexGrow: 1, justifyContent: 'center' },
-  cardsTitle: { fontSize: 28, lineHeight: 34 },
+  cardsTitle: { fontFamily: HeadingFont.bold, fontSize: 30, lineHeight: 36 },
   cardsSubtitle: { fontSize: 16, opacity: 0.6, marginBottom: 8 },
   cards: { gap: 18, marginTop: 4 },
   card: {
@@ -489,9 +524,14 @@ const styles = StyleSheet.create({
   cardLabel: { fontFamily: DisplayFont.semibold, fontSize: 20, color: Brand.green },
   cardDescription: { fontSize: 14, color: '#5b665e' },
   heroQuestion: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
-  heroImage: { width: 260, height: 260 },
-  heroQuestionText: { fontSize: 26, lineHeight: 32, paddingHorizontal: 8 },
-  yesNoGroup: { alignSelf: 'stretch', gap: 14, marginTop: 56 },
+  heroImage: { width: 320, height: 320 },
+  heroQuestionText: {
+    fontFamily: HeadingFont.bold,
+    fontSize: 30,
+    lineHeight: 36,
+    paddingHorizontal: 8,
+  },
+  yesNoGroup: { alignSelf: 'stretch', gap: 14, marginTop: 76 },
   primaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -517,9 +557,30 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   secondaryBtnLabel: { fontFamily: UIFont.semibold, fontSize: 17, color: '#5F6C64' },
-  bullets: { gap: 16, marginTop: 12, alignSelf: 'stretch' },
-  bulletRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  bulletText: { flex: 1, fontSize: 16 },
+  affirmationVideo: { width: 320, height: 320 },
+  bullets: { gap: 7, marginTop: 0, alignSelf: 'stretch' },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#F1F8F1',
+    borderRadius: 13,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+  },
+  bulletCheck: {
+    width: 21,
+    height: 21,
+    borderRadius: 11,
+    backgroundColor: Brand.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Brand.green,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  bulletText: { flex: 1, fontSize: 13.5, fontFamily: UIFont.medium, color: '#3D4A40' },
   footer: { paddingVertical: 16, gap: 4 },
   primary: {
     paddingVertical: 16,
