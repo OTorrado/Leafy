@@ -22,6 +22,7 @@ const MAPPING = {
   'camera.fill': 'photo-camera',
   'magnifyingglass': 'search',
   'bell.fill': 'notifications',
+  'bell': 'notifications-none',
   'sun.max.fill': 'wb-sunny',
   'checkmark': 'check',
   'xmark': 'close',

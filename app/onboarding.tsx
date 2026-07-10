@@ -1,11 +1,15 @@
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SymbolViewProps } from 'expo-symbols';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -48,6 +52,8 @@ type Step = QuestionStep | InfoStep;
 
 const LEAFY_INTRO = require('@/assets/images/leafy-gif/leafy-model-intro.mp4');
 const LEAFY_GOT_YOU = require('@/assets/images/leafy-gif/got-you.mp4');
+const NOTIF_PREVIEW = require('@/assets/images/onboarding/notif-preview.png');
+const SCREEN_W = Dimensions.get('window').width;
 
 const STEPS: Step[] = [
   { kind: 'welcome' },
@@ -141,6 +147,25 @@ export default function OnboardingScreen() {
     player.play();
   });
 
+  // Bell "ringing" wiggle for the notifications screen.
+  const ring = useSharedValue(0);
+  useEffect(() => {
+    ring.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 110 }),
+        withTiming(-1, { duration: 110 }),
+        withTiming(1, { duration: 110 }),
+        withTiming(-1, { duration: 110 }),
+        withTiming(0, { duration: 110 }),
+        withDelay(1400, withTiming(0, { duration: 1 })),
+      ),
+      -1,
+    );
+  }, [ring]);
+  const bellStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${ring.value * 15}deg` }],
+  }));
+
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const step = STEPS[index];
@@ -219,11 +244,13 @@ export default function OnboardingScreen() {
               </ScrollView>
             ) : step.variant === 'hero' ? (
               <View style={styles.heroQuestion}>
-                <ThemedText
-                  type="title"
-                  style={[styles.centerText, styles.displayHeading, styles.heroQuestionText]}>
-                  {step.question}
-                </ThemedText>
+                <View style={styles.heroPrompt}>
+                  <ThemedText
+                    type="title"
+                    style={[styles.centerText, styles.displayHeading, styles.heroQuestionText]}>
+                    {step.question}
+                  </ThemedText>
+                </View>
                 {step.image && (
                   <Image source={step.image} style={styles.heroImage} contentFit="contain" />
                 )}
@@ -302,14 +329,16 @@ export default function OnboardingScreen() {
           )}
 
           {step.kind === 'notifications' && (
-            <View style={styles.centered}>
-              <ThemedText style={styles.hero}>🔔</ThemedText>
-              <ThemedText type="title" style={[styles.centerText, styles.displayHeading]}>
-                Never forget to water again
-              </ThemedText>
-              <ThemedText style={[styles.centerText, styles.muted]}>
-                Turn on reminders and Leafy will nudge you right when each plant needs care.
-              </ThemedText>
+            <View style={styles.notif}>
+              <View style={styles.notifHeader}>
+                <View style={styles.notifBadge}>
+                  <Animated.View style={bellStyle}>
+                    <IconSymbol name="bell" size={30} color={Brand.green} />
+                  </Animated.View>
+                </View>
+                <ThemedText style={styles.notifTitle}>Never miss{'\n'}plant care</ThemedText>
+              </View>
+              <Image source={NOTIF_PREVIEW} style={styles.notifPreview} contentFit="contain" />
             </View>
           )}
         </View>
@@ -317,9 +346,21 @@ export default function OnboardingScreen() {
         <View style={styles.footer}>
           {step.kind === 'notifications' ? (
             <>
-              <PrimaryButton tint={tint} label="Enable reminders" onPress={handleEnableReminders} disabled={busy} />
+              <Pressable onPress={handleEnableReminders} disabled={busy}>
+                {({ pressed }) => (
+                  <LinearGradient
+                    colors={['#6ABE6E', '#3E8B45']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.gradientBtn, pressed && { opacity: 0.9 }]}>
+                    <ThemedText style={styles.gradientBtnLabel}>Turn On Notifications</ThemedText>
+                  </LinearGradient>
+                )}
+              </Pressable>
               <Pressable onPress={complete} disabled={busy} style={styles.skip}>
-                <ThemedText style={[styles.skipText, { color: tint }]}>Maybe later</ThemedText>
+                <ThemedText style={[styles.skipText, { color: Brand.green }]}>
+                  Not Right Now
+                </ThemedText>
               </Pressable>
             </>
           ) : step.kind === 'question' ? null : (
@@ -525,6 +566,11 @@ const styles = StyleSheet.create({
   cardDescription: { fontSize: 14, color: '#5b665e' },
   heroQuestion: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
   heroImage: { width: 320, height: 320 },
+  heroPrompt: {
+    height: 108,
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+  },
   heroQuestionText: {
     fontFamily: HeadingFont.bold,
     fontSize: 30,
@@ -591,4 +637,43 @@ const styles = StyleSheet.create({
   skip: { alignItems: 'center', paddingVertical: 12 },
   skipText: { fontSize: 16, fontWeight: '600' },
   busy: { marginTop: 8 },
+  notif: { flex: 1, justifyContent: 'space-between' },
+  notifHeader: { paddingTop: 8 },
+  notifBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  notifTitle: {
+    fontFamily: UIFont.bold,
+    fontSize: 40,
+    lineHeight: 46,
+    color: '#1E3A24',
+  },
+  notifPreview: {
+    width: SCREEN_W * 1.14,
+    aspectRatio: 1024 / 837,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  gradientBtn: {
+    minHeight: 62,
+    borderRadius: 31,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#3E8B45',
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
+  },
+  gradientBtnLabel: { fontFamily: UIFont.semibold, fontSize: 18, color: '#ffffff' },
 });
