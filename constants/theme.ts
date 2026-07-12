@@ -29,7 +29,7 @@ export const Colors = {
 
 /** Leafy brand accents. */
 export const Brand = {
-  green: '#4C9A4E',
+  green: '#1fc38e',
   greenSoft: '#E7F3E6',
 };
 
