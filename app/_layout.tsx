@@ -12,6 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+import { MyPlantsProvider } from '@/components/my-plants-provider';
 import { OnboardingProvider, useOnboarding } from '@/components/onboarding-provider';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { configureNotificationHandler } from '@/lib/notifications';
@@ -72,7 +73,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <OnboardingProvider>
-        <RootNavigator />
+        <MyPlantsProvider>
+          <RootNavigator />
+        </MyPlantsProvider>
       </OnboardingProvider>
       <StatusBar style="auto" />
     </ThemeProvider>

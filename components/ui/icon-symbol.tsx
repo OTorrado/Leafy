@@ -26,6 +26,15 @@ const MAPPING = {
   'sun.max.fill': 'wb-sunny',
   'checkmark': 'check',
   'xmark': 'close',
+  'heart.fill': 'favorite',
+  'gearshape.fill': 'settings',
+  'drop.fill': 'water-drop',
+  'speedometer': 'speed',
+  'pawprint.fill': 'pets',
+  'square.on.square': 'content-copy',
+  'plus': 'add',
+  'alarm.fill': 'alarm',
+  'alarm': 'alarm',
 } as IconMapping;
 
 /**

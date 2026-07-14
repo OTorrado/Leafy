@@ -42,7 +42,7 @@ export default function TabLayout() {
         name="reminders"
         options={{
           title: 'Reminders',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="bell.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="alarm.fill" color={color} />,
         }}
       />
     </Tabs>
