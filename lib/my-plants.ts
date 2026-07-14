@@ -20,6 +20,8 @@ export type SavedPlant = {
   lastWateredAt: number;
   /** Scheduled local-notification id, so it can be cancelled/rescheduled. */
   notificationId?: string;
+  /** Which site (room) the plant lives in; undefined = unassigned. */
+  siteId?: string;
   addedAt: number;
 };
 

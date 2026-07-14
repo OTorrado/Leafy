@@ -12,6 +12,8 @@ type MyPlantsContextValue = {
   removePlant: (token: string) => void;
   /** Mark a plant watered now and reschedule its reminder. */
   waterPlant: (token: string) => void;
+  /** Move a plant into a site, or pass undefined to unassign it. */
+  assignSite: (token: string, siteId?: string) => void;
   isSaved: (token: string) => boolean;
 };
 
@@ -76,11 +78,19 @@ export function MyPlantsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const assignSite = useCallback((token: string, siteId?: string) => {
+    setPlants((prev) => {
+      const next = prev.map((p) => (p.token === token ? { ...p, siteId } : p));
+      void persistMyPlants(next);
+      return next;
+    });
+  }, []);
+
   const isSaved = useCallback((token: string) => plants.some((p) => p.token === token), [plants]);
 
   const value = useMemo(
-    () => ({ isLoading, plants, addPlant, removePlant, waterPlant, isSaved }),
-    [isLoading, plants, addPlant, removePlant, waterPlant, isSaved],
+    () => ({ isLoading, plants, addPlant, removePlant, waterPlant, assignSite, isSaved }),
+    [isLoading, plants, addPlant, removePlant, waterPlant, assignSite, isSaved],
   );
 
   return <MyPlantsContext.Provider value={value}>{children}</MyPlantsContext.Provider>;

@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Brand, UIFont } from '@/constants/theme';
+import { SITES } from '@/lib/sites';
 
 const EMPTY_ART = require('@/assets/images/platns-2d.png');
 
@@ -54,7 +55,38 @@ export default function MyPlantsScreen() {
           })}
         </View>
 
-        {showGrid ? (
+        {tab === 'sites' ? (
+          <FlatList
+            data={SITES}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            ListHeaderComponent={
+              <ThemedText style={styles.sitesHint}>
+                Pick a site to see its plants and add the ones you already own.
+              </ThemedText>
+            }
+            renderItem={({ item }) => {
+              const count = plants.filter((p) => p.siteId === item.id).length;
+              return (
+                <Pressable
+                  onPress={() => router.push(`/site/${item.id}`)}
+                  style={({ pressed }) => [styles.siteRow, pressed && { opacity: 0.85 }]}>
+                  <View style={[styles.siteTile, { backgroundColor: item.tint }]}>
+                    <ThemedText style={styles.siteEmoji}>{item.emoji}</ThemedText>
+                  </View>
+                  <View style={styles.siteText}>
+                    <ThemedText style={styles.siteName}>{item.name}</ThemedText>
+                    <ThemedText style={styles.siteCount}>
+                      {count === 0 ? 'No plants yet' : count === 1 ? '1 plant' : `${count} plants`}
+                    </ThemedText>
+                  </View>
+                  <IconSymbol name="chevron.right" size={20} color="#C4CCC7" />
+                </Pressable>
+              );
+            }}
+          />
+        ) : showGrid ? (
           <FlatList
             data={plants}
             keyExtractor={(item) => item.token}
@@ -172,6 +204,39 @@ const styles = StyleSheet.create({
   },
   segText: { fontFamily: UIFont.semibold, fontSize: 15, color: '#6E7D73' },
   segTextActive: { color: '#14281B' },
+
+  // Sites
+  sitesHint: {
+    fontFamily: UIFont.medium,
+    fontSize: 13.5,
+    lineHeight: 19,
+    color: '#8A958D',
+    marginBottom: 14,
+  },
+  siteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 10,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  siteTile: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  siteEmoji: { fontSize: 24 },
+  siteText: { flex: 1, marginLeft: 12, marginRight: 8 },
+  siteName: { fontFamily: UIFont.semibold, fontSize: 16, lineHeight: 21, color: '#14281B' },
+  siteCount: { fontFamily: UIFont.medium, fontSize: 12.5, lineHeight: 17, color: '#8A958D' },
 
   // List of plant cards
   listContent: { paddingTop: 16, paddingBottom: 24 },

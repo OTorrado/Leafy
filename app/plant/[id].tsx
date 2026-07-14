@@ -1,6 +1,15 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useMyPlants } from '@/components/my-plants-provider';
@@ -23,12 +32,24 @@ const DIFFICULTY_COLOR: Record<PlantDetail['care']['difficulty'], string> = {
   Advanced: '#C13B72',
 };
 
+const SECTIONS = [
+  { key: 'about', label: 'About' },
+  { key: 'care', label: 'Care' },
+  { key: 'good', label: 'Good to know' },
+  { key: 'propagation', label: 'Propagation' },
+] as const;
+
+type SectionKey = (typeof SECTIONS)[number]['key'];
+
 export default function PlantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { addPlant, isSaved } = useMyPlants();
   const [plant, setPlant] = useState<PlantDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState<SectionKey>('about');
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionY = useRef<Partial<Record<SectionKey, number>>>({});
 
   useEffect(() => {
     let active = true;
@@ -42,6 +63,29 @@ export default function PlantDetailScreen() {
       active = false;
     };
   }, [id]);
+
+  /** Record each section's offset inside the scroll content. */
+  const measure = (key: SectionKey) => (e: LayoutChangeEvent) => {
+    sectionY.current[key] = e.nativeEvent.layout.y;
+  };
+
+  const jumpTo = (key: SectionKey) => {
+    const y = sectionY.current[key];
+    if (y === undefined) return;
+    setActiveSection(key);
+    scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
+  };
+
+  /** Highlight the topic currently in view. */
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y + 32;
+    let current: SectionKey = 'about';
+    for (const section of SECTIONS) {
+      const top = sectionY.current[section.key];
+      if (top !== undefined && top <= y) current = section.key;
+    }
+    setActiveSection((prev) => (prev === current ? prev : current));
+  };
 
   if (loading) {
     return (
@@ -65,8 +109,56 @@ export default function PlantDetailScreen() {
 
   return (
     <ThemedView style={styles.root}>
-      <Stack.Screen options={{ title: plant.commonName }} />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Custom header: back arrow, name, add button */}
+      <SafeAreaView edges={['top']} style={styles.headerSafe}>
+        <View style={styles.headerRow}>
+          <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backButton}>
+            <IconSymbol name="chevron.left" size={24} color="#14281B" />
+          </Pressable>
+          <ThemedText style={styles.headerTitle} numberOfLines={1}>
+            {plant.commonName}
+          </ThemedText>
+          <Pressable
+            onPress={() => addPlant(toSavedPlant(plant, plant.care.watering))}
+            disabled={saved}
+            hitSlop={10}
+            accessibilityLabel={saved ? 'Added to My Plants' : 'Add to My Plants'}
+            style={({ pressed }) => [styles.addCircle, pressed && { opacity: 0.8 }]}>
+            <IconSymbol name={saved ? 'checkmark' : 'plus'} size={saved ? 18 : 22} color="#ffffff" />
+          </Pressable>
+        </View>
+      </SafeAreaView>
+
+      {/* Topic bar: tap to jump to a section */}
+      <View style={styles.topicBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.topicBarContent}>
+          {SECTIONS.map((section) => {
+            const active = activeSection === section.key;
+            return (
+              <Pressable
+                key={section.key}
+                onPress={() => jumpTo(section.key)}
+                style={[styles.topic, active && styles.topicActive]}>
+                <ThemedText style={[styles.topicLabel, active && styles.topicLabelActive]}>
+                  {section.label}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      <ScrollView
+        ref={scrollRef}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <PlantImage
           uri={plant.imageUrl}
@@ -76,60 +168,54 @@ export default function PlantDetailScreen() {
           style={styles.hero}
         />
 
-        {/* Title block */}
-        <ThemedText style={styles.name}>{plant.commonName}</ThemedText>
-        <ThemedText style={styles.sciName}>{plant.scientificName}</ThemedText>
+        {/* About */}
+        <View onLayout={measure('about')}>
+          <ThemedText style={styles.name}>{plant.commonName}</ThemedText>
+          <ThemedText style={styles.sciName}>{plant.scientificName}</ThemedText>
 
-        <View
-          style={[styles.badge, { backgroundColor: DIFFICULTY_TINT[plant.care.difficulty] }]}>
-          <IconSymbol name="speedometer" size={14} color={DIFFICULTY_COLOR[plant.care.difficulty]} />
-          <ThemedText style={[styles.badgeText, { color: DIFFICULTY_COLOR[plant.care.difficulty] }]}>
-            {plant.care.difficulty} care
-          </ThemedText>
+          <View
+            style={[styles.badge, { backgroundColor: DIFFICULTY_TINT[plant.care.difficulty] }]}>
+            <IconSymbol
+              name="speedometer"
+              size={14}
+              color={DIFFICULTY_COLOR[plant.care.difficulty]}
+            />
+            <ThemedText
+              style={[styles.badgeText, { color: DIFFICULTY_COLOR[plant.care.difficulty] }]}>
+              {plant.care.difficulty} care
+            </ThemedText>
+          </View>
+
+          <ThemedText style={styles.description}>{plant.description}</ThemedText>
         </View>
-
-        <ThemedText style={styles.description}>{plant.description}</ThemedText>
 
         {/* Care */}
-        <ThemedText style={styles.sectionTitle}>Care</ThemedText>
-        <CareRow icon="drop.fill" tint="#EAF1FE" color="#3E7BFA" label="Watering" value={plant.care.watering} />
-        <CareRow icon="sun.max.fill" tint="#FBF3E4" color="#E0A32A" label="Light" value={plant.care.light} />
-        <CareRow icon="leaf.fill" tint="#E4F5EE" color="#1a9e73" label="Soil" value={plant.care.soil} />
+        <View onLayout={measure('care')}>
+          <ThemedText style={styles.sectionTitle}>Care</ThemedText>
+          <CareRow icon="drop.fill" tint="#EAF1FE" color="#3E7BFA" label="Watering" value={plant.care.watering} />
+          <CareRow icon="sun.max.fill" tint="#FBF3E4" color="#E0A32A" label="Light" value={plant.care.light} />
+          <CareRow icon="leaf.fill" tint="#E4F5EE" color="#1a9e73" label="Soil" value={plant.care.soil} />
+        </View>
 
         {/* Good to know */}
-        <ThemedText style={styles.sectionTitle}>Good to know</ThemedText>
-        <CareRow icon="pawprint.fill" tint="#FBEAF1" color="#C13B72" label="Toxicity" value={plant.care.toxicity} />
+        <View onLayout={measure('good')}>
+          <ThemedText style={styles.sectionTitle}>Good to know</ThemedText>
+          <CareRow icon="pawprint.fill" tint="#FBEAF1" color="#C13B72" label="Toxicity" value={plant.care.toxicity} />
+        </View>
 
         {/* Propagation */}
-        <ThemedText style={styles.sectionTitle}>Propagation</ThemedText>
-        <View style={styles.chips}>
-          {plant.propagation.map((method) => (
-            <View key={method} style={styles.chip}>
-              <IconSymbol name="square.on.square" size={14} color="#1a9e73" />
-              <ThemedText style={styles.chipText}>{method}</ThemedText>
-            </View>
-          ))}
+        <View onLayout={measure('propagation')}>
+          <ThemedText style={styles.sectionTitle}>Propagation</ThemedText>
+          <View style={styles.chips}>
+            {plant.propagation.map((method) => (
+              <View key={method} style={styles.chip}>
+                <IconSymbol name="square.on.square" size={14} color="#1a9e73" />
+                <ThemedText style={styles.chipText}>{method}</ThemedText>
+              </View>
+            ))}
+          </View>
         </View>
       </ScrollView>
-
-      {/* Add button */}
-      <SafeAreaView edges={['bottom']} style={styles.footer}>
-        {saved ? (
-          <View style={[styles.addButton, styles.addButtonSaved]}>
-            <IconSymbol name="checkmark" size={18} color="#1a9e73" />
-            <ThemedText style={styles.addButtonSavedLabel}>Added to My Plants</ThemedText>
-          </View>
-        ) : (
-          <Pressable
-            onPress={() => {
-              addPlant(toSavedPlant(plant, plant.care.watering));
-              router.navigate('/');
-            }}
-            style={({ pressed }) => [styles.addButton, pressed && { opacity: 0.9 }]}>
-            <ThemedText style={styles.addButtonLabel}>+ Add to My Plants</ThemedText>
-          </Pressable>
-        )}
-      </SafeAreaView>
     </ThemedView>
   );
 }
@@ -164,7 +250,53 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notFound: { fontFamily: UIFont.medium, fontSize: 16, color: '#8A958D' },
-  scroll: { paddingHorizontal: 20, paddingBottom: 120 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 40 },
+  headerSafe: { backgroundColor: '#ffffff' },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    height: 52,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -6,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: UIFont.semibold,
+    fontSize: 17,
+    lineHeight: 23,
+    color: '#14281B',
+    marginHorizontal: 8,
+  },
+  addCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Brand.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topicBar: {
+    backgroundColor: '#ffffff',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#EDF1EF',
+  },
+  topicBarContent: { paddingHorizontal: 16, paddingBottom: 10, gap: 8 },
+  topic: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: '#F1F4F2',
+  },
+  topicActive: { backgroundColor: '#E4F5EE' },
+  topicLabel: { fontFamily: UIFont.semibold, fontSize: 13.5, color: '#6E7D73' },
+  topicLabelActive: { color: '#1a9e73' },
   hero: {
     height: 180,
     borderRadius: 24,
@@ -230,35 +362,4 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   chipText: { fontFamily: UIFont.medium, fontSize: 13, color: '#3A4A40' },
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#EAEEEB',
-  },
-  addButton: {
-    backgroundColor: Brand.green,
-    paddingVertical: 16,
-    borderRadius: 28,
-    alignItems: 'center',
-    shadowColor: Brand.green,
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  addButtonLabel: { fontFamily: UIFont.bold, fontSize: 17, color: '#ffffff' },
-  addButtonSaved: {
-    flexDirection: 'row',
-    gap: 8,
-    backgroundColor: '#E4F5EE',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  addButtonSavedLabel: { fontFamily: UIFont.bold, fontSize: 17, color: '#1a9e73' },
 });
