@@ -38,6 +38,7 @@ const MAPPING = {
   'alarm': 'alarm',
   'ellipsis': 'more-horiz',
   'trash': 'delete',
+  'mappin': 'place',
 } as IconMapping;
 
 /**

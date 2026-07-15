@@ -129,7 +129,9 @@ export default function MyPlantsScreen() {
             keyExtractor={(item) => item.token}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => (
+            renderItem={({ item }) => {
+              const site = getSite(item.siteId);
+              return (
               <Pressable
                 onPress={() => router.push(`/plant/${item.token}`)}
                 style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}>
@@ -147,6 +149,19 @@ export default function MyPlantsScreen() {
                   <ThemedText style={styles.cardSci} numberOfLines={1}>
                     {item.scientificName}
                   </ThemedText>
+                  {site && (
+                    <View style={styles.cardSiteRow}>
+                      <IconSymbol
+                        name="mappin"
+                        size={12}
+                        color="#1a9e73"
+                        style={styles.siteIcon}
+                      />
+                      <ThemedText style={styles.cardSiteText} numberOfLines={1}>
+                        {site.name}
+                      </ThemedText>
+                    </View>
+                  )}
                   <View style={styles.cardWaterRow}>
                     <IconSymbol name="drop.fill" size={13} color="#3E7BFA" style={styles.waterIcon} />
                     <ThemedText style={styles.cardWaterText}>{item.wateringSummary}</ThemedText>
@@ -161,7 +176,8 @@ export default function MyPlantsScreen() {
                   <IconSymbol name="ellipsis" size={18} color="#8A958D" />
                 </Pressable>
               </Pressable>
-            )}
+              );
+            }}
             ListFooterComponent={
               <Pressable
                 onPress={() => setSheetOpen(true)}
@@ -358,7 +374,10 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 1,
   },
-  cardWaterRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: 6 },
+  cardSiteRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
+  siteIcon: { marginLeft: -1 },
+  cardSiteText: { flex: 1, fontFamily: UIFont.semibold, fontSize: 12.5, color: '#1a9e73' },
+  cardWaterRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: 5 },
   waterIcon: { marginTop: 2 },
   cardWaterText: {
     flex: 1,
