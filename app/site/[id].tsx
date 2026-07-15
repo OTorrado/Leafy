@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useMyPlants } from '@/components/my-plants-provider';
 import { PlantImage } from '@/components/plant-image';
+import { SiteImage } from '@/components/site-image';
 import { SitePlantPicker } from '@/components/site-plant-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -36,9 +37,7 @@ export default function SiteDetailScreen() {
 
       {sitePlants.length === 0 ? (
         <View style={styles.center}>
-          <View style={[styles.siteBadge, { backgroundColor: site.tint }]}>
-            <ThemedText style={styles.siteEmoji}>{site.emoji}</ThemedText>
-          </View>
+          <SiteImage site={site} emojiSize={40} style={styles.siteBadge} />
           <ThemedText style={styles.emptyTitle}>No plants here yet</ThemedText>
           <ThemedText style={styles.emptyText}>
             Add plants you already own to your {site.name}.
@@ -108,11 +107,8 @@ const styles = StyleSheet.create({
   siteBadge: {
     width: 88,
     height: 88,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 44,
   },
-  siteEmoji: { fontSize: 40 },
   emptyTitle: {
     fontFamily: UIFont.bold,
     fontSize: 20,

@@ -5,23 +5,44 @@ import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddPlantSheet } from '@/components/add-plant-sheet';
+import { BottomSheet } from '@/components/bottom-sheet';
 import { useMyPlants } from '@/components/my-plants-provider';
 import { PlantImage } from '@/components/plant-image';
+import { SiteChooser } from '@/components/site-chooser';
+import { SiteImage } from '@/components/site-image';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Brand, UIFont } from '@/constants/theme';
-import { SITES } from '@/lib/sites';
+import { useActiveSites } from '@/hooks/use-active-sites';
+import type { SavedPlant } from '@/lib/my-plants';
+import { getSite, type Site } from '@/lib/sites';
 
 const EMPTY_ART = require('@/assets/images/platns-2d.png');
 
 export default function MyPlantsScreen() {
   const router = useRouter();
-  const { plants } = useMyPlants();
+  const { plants, removePlant, assignSite } = useMyPlants();
+  const { activeSiteIds, isLoading: sitesLoading, saveSites } = useActiveSites();
   const [tab, setTab] = useState<'plants' | 'sites'>('plants');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [menuPlant, setMenuPlant] = useState<SavedPlant | null>(null);
+  const [menuSite, setMenuSite] = useState<Site | null>(null);
+  const [chooserOpen, setChooserOpen] = useState(false);
+
+  /** Drop a site and release any plants that lived in it. */
+  const handleRemoveSite = (site: Site) => {
+    saveSites(activeSiteIds.filter((id) => id !== site.id));
+    plants
+      .filter((p) => p.siteId === site.id)
+      .forEach((p) => assignSite(p.token, undefined));
+    setMenuSite(null);
+  };
 
   const showGrid = tab === 'plants' && plants.length > 0;
+  // Show the chooser when adding sites, or when none have been picked yet.
+  const showChooser = !sitesLoading && (chooserOpen || activeSiteIds.length === 0);
+  const activeSites = activeSiteIds.map(getSite).filter((s) => s !== undefined);
 
   return (
     <ThemedView style={styles.root}>
@@ -55,16 +76,27 @@ export default function MyPlantsScreen() {
           })}
         </View>
 
-        {tab === 'sites' ? (
+        {tab === 'sites' && showChooser ? (
+          <SiteChooser
+            initialSelected={activeSiteIds}
+            onDone={(ids) => {
+              saveSites(ids);
+              setChooserOpen(false);
+            }}
+          />
+        ) : tab === 'sites' ? (
           <FlatList
-            data={SITES}
+            data={activeSites}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
-            ListHeaderComponent={
-              <ThemedText style={styles.sitesHint}>
-                Pick a site to see its plants and add the ones you already own.
-              </ThemedText>
+            ListFooterComponent={
+              <Pressable
+                onPress={() => setChooserOpen(true)}
+                style={({ pressed }) => [styles.editSitesButton, pressed && { opacity: 0.7 }]}>
+                <IconSymbol name="plus" size={18} color="#1a9e73" />
+                <ThemedText style={styles.editSitesLabel}>Add or edit sites</ThemedText>
+              </Pressable>
             }
             renderItem={({ item }) => {
               const count = plants.filter((p) => p.siteId === item.id).length;
@@ -72,16 +104,21 @@ export default function MyPlantsScreen() {
                 <Pressable
                   onPress={() => router.push(`/site/${item.id}`)}
                   style={({ pressed }) => [styles.siteRow, pressed && { opacity: 0.85 }]}>
-                  <View style={[styles.siteTile, { backgroundColor: item.tint }]}>
-                    <ThemedText style={styles.siteEmoji}>{item.emoji}</ThemedText>
-                  </View>
+                  <SiteImage site={item} emojiSize={24} style={styles.siteTile} />
                   <View style={styles.siteText}>
                     <ThemedText style={styles.siteName}>{item.name}</ThemedText>
                     <ThemedText style={styles.siteCount}>
                       {count === 0 ? 'No plants yet' : count === 1 ? '1 plant' : `${count} plants`}
                     </ThemedText>
                   </View>
-                  <IconSymbol name="chevron.right" size={20} color="#C4CCC7" />
+
+                  <Pressable
+                    onPress={() => setMenuSite(item)}
+                    hitSlop={10}
+                    accessibilityLabel={`Options for ${item.name}`}
+                    style={({ pressed }) => [styles.menuButton, pressed && { opacity: 0.5 }]}>
+                    <IconSymbol name="ellipsis" size={18} color="#8A958D" />
+                  </Pressable>
                 </Pressable>
               );
             }}
@@ -115,7 +152,14 @@ export default function MyPlantsScreen() {
                     <ThemedText style={styles.cardWaterText}>{item.wateringSummary}</ThemedText>
                   </View>
                 </View>
-                <IconSymbol name="chevron.right" size={20} color="#C4CCC7" />
+
+                <Pressable
+                  onPress={() => setMenuPlant(item)}
+                  hitSlop={10}
+                  accessibilityLabel={`Options for ${item.commonName}`}
+                  style={({ pressed }) => [styles.menuButton, pressed && { opacity: 0.5 }]}>
+                  <IconSymbol name="ellipsis" size={18} color="#8A958D" />
+                </Pressable>
               </Pressable>
             )}
             ListFooterComponent={
@@ -157,6 +201,44 @@ export default function MyPlantsScreen() {
           router.push('/search');
         }}
       />
+
+      {/* Per-plant options */}
+      <BottomSheet visible={!!menuPlant} onClose={() => setMenuPlant(null)}>
+        <ThemedText style={styles.menuTitle} numberOfLines={1}>
+          {menuPlant?.commonName}
+        </ThemedText>
+        <Pressable
+          onPress={() => {
+            if (menuPlant) removePlant(menuPlant.token);
+            setMenuPlant(null);
+          }}
+          style={({ pressed }) => [styles.menuOption, pressed && { opacity: 0.6 }]}>
+          <View style={styles.menuIcon}>
+            <IconSymbol name="trash" size={20} color="#E5484D" />
+          </View>
+          <ThemedText style={styles.menuOptionText}>Remove plant</ThemedText>
+        </Pressable>
+      </BottomSheet>
+
+      {/* Per-site options */}
+      <BottomSheet visible={!!menuSite} onClose={() => setMenuSite(null)}>
+        <ThemedText style={styles.menuTitle} numberOfLines={1}>
+          {menuSite?.name}
+        </ThemedText>
+        <Pressable
+          onPress={() => menuSite && handleRemoveSite(menuSite)}
+          style={({ pressed }) => [styles.menuOption, pressed && { opacity: 0.6 }]}>
+          <View style={styles.menuIcon}>
+            <IconSymbol name="trash" size={20} color="#E5484D" />
+          </View>
+          <View style={styles.menuOptionBody}>
+            <ThemedText style={styles.menuOptionText}>Remove site</ThemedText>
+            <ThemedText style={styles.menuOptionSub}>
+              Plants here stay in My Plants, just without a site.
+            </ThemedText>
+          </View>
+        </Pressable>
+      </BottomSheet>
     </ThemedView>
   );
 }
@@ -206,13 +288,19 @@ const styles = StyleSheet.create({
   segTextActive: { color: '#14281B' },
 
   // Sites
-  sitesHint: {
-    fontFamily: UIFont.medium,
-    fontSize: 13.5,
-    lineHeight: 19,
-    color: '#8A958D',
-    marginBottom: 14,
+  editSitesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    marginTop: 4,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    borderColor: '#D5E8DF',
+    borderStyle: 'dashed',
   },
+  editSitesLabel: { fontFamily: UIFont.semibold, fontSize: 15, color: '#1a9e73' },
   siteRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -230,11 +318,8 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  siteEmoji: { fontSize: 24 },
-  siteText: { flex: 1, marginLeft: 12, marginRight: 8 },
+  siteText: { flex: 1, marginLeft: 12, marginRight: 26 },
   siteName: { fontFamily: UIFont.semibold, fontSize: 16, lineHeight: 21, color: '#14281B' },
   siteCount: { fontFamily: UIFont.medium, fontSize: 12.5, lineHeight: 17, color: '#8A958D' },
 
@@ -254,7 +339,16 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardImage: { width: 72, height: 72, borderRadius: 14 },
-  cardBody: { flex: 1, marginLeft: 12, marginRight: 8 },
+  cardBody: { flex: 1, marginLeft: 12, marginRight: 26 },
+  menuButton: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 30,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cardName: { fontFamily: UIFont.semibold, fontSize: 16, lineHeight: 21, color: '#14281B' },
   cardSci: {
     fontFamily: UIFont.medium,
@@ -317,4 +411,26 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   addButtonLabel: { fontFamily: UIFont.bold, fontSize: 16, color: '#ffffff' },
+
+  // Per-plant options sheet
+  menuTitle: {
+    fontFamily: UIFont.bold,
+    fontSize: 20,
+    lineHeight: 27,
+    color: '#14281B',
+    marginBottom: 6,
+  },
+  menuOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
+  menuIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FBEAF1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  menuOptionText: { fontFamily: UIFont.semibold, fontSize: 16, lineHeight: 22, color: '#E5484D' },
+  menuOptionBody: { flex: 1 },
+  menuOptionSub: { fontFamily: UIFont.medium, fontSize: 12.5, lineHeight: 17, color: '#8A958D' },
 });

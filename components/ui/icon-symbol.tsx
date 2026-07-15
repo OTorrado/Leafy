@@ -36,6 +36,8 @@ const MAPPING = {
   'plus': 'add',
   'alarm.fill': 'alarm',
   'alarm': 'alarm',
+  'ellipsis': 'more-horiz',
+  'trash': 'delete',
 } as IconMapping;
 
 /**
