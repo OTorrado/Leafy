@@ -39,6 +39,9 @@ const MAPPING = {
   'ellipsis': 'more-horiz',
   'trash': 'delete',
   'mappin': 'place',
+  'calendar': 'calendar-today',
+  'clock': 'schedule',
+  'checkmark.circle': 'check-circle',
 } as IconMapping;
 
 /**

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { PlantSummary } from '@/lib/plants-api';
-import { parseWateringDays } from '@/lib/watering';
+import { DAY_MS, parseWateringDays } from '@/lib/watering';
 
 const STORAGE_KEY = 'leafy.myplants.v3';
 
@@ -35,6 +35,7 @@ export function shortenWatering(text?: string): string {
 /** Build a SavedPlant from a catalog summary + (optional) watering text. */
 export function toSavedPlant(plant: PlantSummary, wateringText?: string): SavedPlant {
   const now = Date.now();
+  const wateringIntervalDays = parseWateringDays(wateringText);
   return {
     token: plant.token,
     commonName: plant.commonName,
@@ -43,8 +44,10 @@ export function toSavedPlant(plant: PlantSummary, wateringText?: string): SavedP
     emoji: plant.emoji,
     tint: plant.tint,
     wateringSummary: shortenWatering(wateringText),
-    wateringIntervalDays: parseWateringDays(wateringText),
-    lastWateredAt: now,
+    wateringIntervalDays,
+    // Back-date the last watering by one interval so the plant is due to be
+    // watered on the day it's added; the cycle then repeats every interval.
+    lastWateredAt: now - wateringIntervalDays * DAY_MS,
     addedAt: now,
   };
 }

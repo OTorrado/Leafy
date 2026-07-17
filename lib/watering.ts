@@ -31,13 +31,47 @@ export function nextWaterAt(plant: SavedPlant): number {
   return plant.lastWateredAt + plant.wateringIntervalDays * DAY_MS;
 }
 
+/** Midnight (local) of the given timestamp. */
+export function startOfDay(timestamp: number): number {
+  const d = new Date(timestamp);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/** True when both timestamps fall on the same calendar day. */
+export function isSameDay(a: number, b: number): boolean {
+  return startOfDay(a) === startOfDay(b);
+}
+
 /** Whole calendar days from today until `timestamp` (negative = overdue). */
 export function daysUntil(timestamp: number): number {
-  const startToday = new Date();
-  startToday.setHours(0, 0, 0, 0);
-  const startTarget = new Date(timestamp);
-  startTarget.setHours(0, 0, 0, 0);
-  return Math.round((startTarget.getTime() - startToday.getTime()) / DAY_MS);
+  return Math.round((startOfDay(timestamp) - startOfDay(Date.now())) / DAY_MS);
+}
+
+/**
+ * The days this plant should be watered within a given month, projecting its
+ * interval forward. Overdue plants roll to today, so nothing is scheduled in
+ * the past. Returns midnight timestamps.
+ */
+export function wateringDaysInMonth(
+  plant: SavedPlant,
+  year: number,
+  month: number,
+): number[] {
+  const interval = plant.wateringIntervalDays * DAY_MS;
+  const today = startOfDay(Date.now());
+  const base = Math.max(startOfDay(nextWaterAt(plant)), today);
+  const monthStart = startOfDay(new Date(year, month, 1).getTime());
+  const monthEnd = startOfDay(new Date(year, month + 1, 0).getTime());
+
+  const days: number[] = [];
+  let k = Math.max(0, Math.floor((monthStart - base) / interval));
+  for (let guard = 0; guard < 400; guard++, k++) {
+    const t = base + k * interval;
+    if (t > monthEnd) break;
+    if (t >= monthStart) days.push(t);
+  }
+  return days;
 }
 
 export type WateringTone = 'overdue' | 'today' | 'soon' | 'later';

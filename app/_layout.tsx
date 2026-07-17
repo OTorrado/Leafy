@@ -58,6 +58,7 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="plant/[id]" options={{ title: 'Plant' }} />
         <Stack.Screen name="site/[id]" options={{ title: 'Site' }} />
+        <Stack.Screen name="calendar" options={{ title: 'Calendar' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack.Protected>
 
