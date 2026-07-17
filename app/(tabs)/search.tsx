@@ -49,7 +49,7 @@ export default function SearchScreen() {
     if (isSaved(plant.token)) return;
     // Fetch detail to capture the watering summary, then save locally.
     const detail = await getPlant(plant.token);
-    addPlant(toSavedPlant(plant, detail?.care.watering));
+    addPlant(toSavedPlant(plant, detail?.care.watering, detail?.care.fertilizing));
     router.navigate('/');
   };
 

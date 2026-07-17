@@ -22,6 +22,7 @@ export type PlantSummary = {
 
 export type PlantCare = {
   watering: string;
+  fertilizing: string;
   light: string;
   soil: string;
   difficulty: 'Easy' | 'Moderate' | 'Advanced';
@@ -50,6 +51,7 @@ const CATALOG: PlantDetail[] = [
       'A climbing evergreen loved for its large, glossy leaves that develop dramatic holes and splits as it matures. Forgiving and fast-growing, it is one of the most popular houseplants.',
     care: {
       watering: 'Every 1–2 weeks, once the top 2–3 cm of soil are dry.',
+      fertilizing: 'Every 4–6 weeks in spring and summer.',
       light: 'Bright, indirect light. Avoid harsh direct sun.',
       soil: 'Well-draining, peat-based potting mix.',
       difficulty: 'Easy',
@@ -71,6 +73,7 @@ const CATALOG: PlantDetail[] = [
       'A striking indoor tree with large, violin-shaped leaves. It makes a bold statement but prefers a stable spot and consistent care.',
     care: {
       watering: 'Every 7–10 days when the top layer of soil dries out.',
+      fertilizing: 'Every 4 weeks during the growing season.',
       light: 'Bright, filtered light near a window.',
       soil: 'Rich, well-draining indoor potting mix.',
       difficulty: 'Moderate',
@@ -92,6 +95,7 @@ const CATALOG: PlantDetail[] = [
       'An almost indestructible succulent with stiff, upright leaves. It tolerates neglect, low light, and irregular watering, making it perfect for beginners.',
     care: {
       watering: 'Every 2–4 weeks. Let the soil dry out completely first.',
+      fertilizing: 'Every 8 weeks in spring and summer.',
       light: 'Tolerates low light; thrives in bright, indirect light.',
       soil: 'Free-draining cactus or succulent mix.',
       difficulty: 'Easy',
@@ -113,6 +117,7 @@ const CATALOG: PlantDetail[] = [
       'A trailing vine with heart-shaped, marbled leaves. Extremely easy to grow and quick to trail from shelves or climb a moss pole.',
     care: {
       watering: 'Every 1–2 weeks when the top soil feels dry.',
+      fertilizing: 'Every 4–6 weeks in spring and summer.',
       light: 'Low to bright, indirect light.',
       soil: 'Standard well-draining potting mix.',
       difficulty: 'Easy',
@@ -134,6 +139,7 @@ const CATALOG: PlantDetail[] = [
       'An elegant plant with glossy leaves and white, hood-like flowers. It clearly droops when thirsty, making its needs easy to read.',
     care: {
       watering: 'About once a week; it wilts visibly when it needs water.',
+      fertilizing: 'Every 6 weeks in spring and summer.',
       light: 'Medium to low, indirect light.',
       soil: 'Moisture-retentive but well-draining mix.',
       difficulty: 'Easy',
@@ -155,6 +161,7 @@ const CATALOG: PlantDetail[] = [
       'A glossy, waxy-leaved plant that stores water in its rhizomes, letting it survive long periods of drought and low light.',
     care: {
       watering: 'Every 2–3 weeks; allow soil to dry out fully.',
+      fertilizing: 'Every 8 weeks during the growing season.',
       light: 'Low to bright, indirect light.',
       soil: 'Well-draining potting mix.',
       difficulty: 'Easy',
@@ -176,6 +183,7 @@ const CATALOG: PlantDetail[] = [
       'A cheerful, arching plant that sends out baby plantlets on long stems. Adaptable, forgiving, and safe around pets.',
     care: {
       watering: 'Once a week; keep lightly moist in summer.',
+      fertilizing: 'Every 4–6 weeks in spring and summer.',
       light: 'Bright, indirect light.',
       soil: 'General-purpose well-draining mix.',
       difficulty: 'Easy',
@@ -197,6 +205,7 @@ const CATALOG: PlantDetail[] = [
       'A hardy succulent with thick, gel-filled leaves used for skin care. It thrives on bright light and minimal watering.',
     care: {
       watering: 'Every 2–3 weeks; let soil dry completely between waterings.',
+      fertilizing: 'Every 8–12 weeks in spring and summer.',
       light: 'Bright light, including some direct sun.',
       soil: 'Sandy, fast-draining cactus mix.',
       difficulty: 'Easy',
@@ -218,6 +227,7 @@ const CATALOG: PlantDetail[] = [
       'Prized for its large, round leaves striped in silver-green. It folds its leaves at night and prefers humidity and steady moisture.',
     care: {
       watering: 'Keep lightly moist; water when the top layer dries.',
+      fertilizing: 'Every 4 weeks in spring and summer, diluted.',
       light: 'Medium, indirect light. No direct sun.',
       soil: 'Moisture-retentive, peat-based mix.',
       difficulty: 'Advanced',
@@ -239,6 +249,7 @@ const CATALOG: PlantDetail[] = [
       'A slim, tree-like plant with spiky, red-edged leaves. Architectural, slow-growing, and very tolerant of neglect.',
     care: {
       watering: 'Every 2 weeks; let the top half of soil dry out.',
+      fertilizing: 'Every 6–8 weeks in the growing season.',
       light: 'Bright, indirect light; tolerates medium light.',
       soil: 'Loose, well-draining potting mix.',
       difficulty: 'Easy',
@@ -260,6 +271,7 @@ const CATALOG: PlantDetail[] = [
       'A charming succulent with plump, oval leaves and a tree-like form. Long-lived and easy, it is often passed down for generations.',
     care: {
       watering: 'Every 2–3 weeks; let soil dry fully between waterings.',
+      fertilizing: 'Every 8–12 weeks in spring and summer.',
       light: 'Bright light with some direct sun.',
       soil: 'Fast-draining succulent mix.',
       difficulty: 'Easy',
@@ -281,6 +293,7 @@ const CATALOG: PlantDetail[] = [
       'A robust indoor tree with large, leathery, deep-green leaves. Easygoing and fast-growing in the right light.',
     care: {
       watering: 'Every 1–2 weeks when the top soil dries.',
+      fertilizing: 'Every 4–6 weeks in spring and summer.',
       light: 'Bright, indirect light.',
       soil: 'Well-draining potting mix.',
       difficulty: 'Easy',

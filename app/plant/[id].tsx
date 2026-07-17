@@ -121,7 +121,9 @@ export default function PlantDetailScreen() {
             {plant.commonName}
           </ThemedText>
           <Pressable
-            onPress={() => addPlant(toSavedPlant(plant, plant.care.watering))}
+            onPress={() =>
+              addPlant(toSavedPlant(plant, plant.care.watering, plant.care.fertilizing))
+            }
             disabled={saved}
             hitSlop={10}
             accessibilityLabel={saved ? 'Added to My Plants' : 'Add to My Plants'}
@@ -193,6 +195,7 @@ export default function PlantDetailScreen() {
         <View onLayout={measure('care')}>
           <ThemedText style={styles.sectionTitle}>Care</ThemedText>
           <CareRow icon="drop.fill" tint="#EAF1FE" color="#3E7BFA" label="Watering" value={plant.care.watering} />
+          <CareRow icon="bag.fill" tint="#F3EBDD" color="#8B5E3C" label="Fertilizing" value={plant.care.fertilizing} />
           <CareRow icon="sun.max.fill" tint="#FBF3E4" color="#E0A32A" label="Light" value={plant.care.light} />
           <CareRow icon="leaf.fill" tint="#E4F5EE" color="#1a9e73" label="Soil" value={plant.care.soil} />
         </View>
@@ -227,7 +230,7 @@ function CareRow({
   label,
   value,
 }: {
-  icon: 'drop.fill' | 'sun.max.fill' | 'leaf.fill' | 'pawprint.fill';
+  icon: 'drop.fill' | 'bag.fill' | 'sun.max.fill' | 'leaf.fill' | 'pawprint.fill';
   tint: string;
   color: string;
   label: string;

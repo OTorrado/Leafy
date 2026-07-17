@@ -11,9 +11,13 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts, UIFont } from '@/constants/theme';
 import type { SavedPlant } from '@/lib/my-plants';
 import { getSite } from '@/lib/sites';
-import { daysUntil, isSameDay, nextWaterAt } from '@/lib/watering';
+import { daysUntil, isSameDay, nextFertilizeAt, nextWaterAt } from '@/lib/watering';
 
 type ScheduleTab = 'today' | 'upcoming' | 'completed';
+type CareKind = 'water' | 'fertilize';
+type Task = { plant: SavedPlant; kind: CareKind };
+
+const dueAt = (t: Task) => (t.kind === 'water' ? nextWaterAt(t.plant) : nextFertilizeAt(t.plant));
 
 const TABS: { key: ScheduleTab; label: string; icon: 'leaf.fill' | 'calendar' | 'checkmark.circle' }[] = [
   { key: 'today', label: 'Today', icon: 'leaf.fill' },
@@ -30,23 +34,49 @@ const ORANGE = '#E8930C';
 
 export default function ScheduleScreen() {
   const router = useRouter();
-  const { plants, waterPlant } = useMyPlants();
+  const { plants, waterPlant, fertilizePlant } = useMyPlants();
   const [tab, setTab] = useState<ScheduleTab>('today');
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // Watered today = completed. Due (or overdue) and not watered today = today's tasks.
-  const completed = plants.filter((p) => isSameDay(p.lastWateredAt, Date.now()));
-  const dueToday = plants.filter(
-    (p) => !isSameDay(p.lastWateredAt, Date.now()) && daysUntil(nextWaterAt(p)) <= 0,
-  );
-  const upcoming = plants
-    .filter((p) => daysUntil(nextWaterAt(p)) > 0)
-    .sort((a, b) => nextWaterAt(a) - nextWaterAt(b));
+  const now = Date.now();
+  // Done today = completed; due (or overdue) and not done today = today's tasks.
+  const wateredToday = (p: SavedPlant) => isSameDay(p.lastWateredAt, now);
+  const fertilizedToday = (p: SavedPlant) =>
+    isSameDay(p.lastFertilizedAt, now) && p.lastFertilizedAt !== p.addedAt;
 
-  const totalToday = dueToday.length + completed.length;
-  const progress = totalToday === 0 ? 0 : completed.length / totalToday;
+  const completed: Task[] = [
+    ...plants.filter(wateredToday).map((plant) => ({ plant, kind: 'water' as const })),
+    ...plants.filter(fertilizedToday).map((plant) => ({ plant, kind: 'fertilize' as const })),
+  ];
+  const dueToday: Task[] = [
+    ...plants
+      .filter((p) => !wateredToday(p) && daysUntil(nextWaterAt(p)) <= 0)
+      .map((plant) => ({ plant, kind: 'water' as const })),
+    ...plants
+      .filter((p) => !fertilizedToday(p) && daysUntil(nextFertilizeAt(p)) <= 0)
+      .map((plant) => ({ plant, kind: 'fertilize' as const })),
+  ];
+  const upcoming: Task[] = [
+    ...plants
+      .filter((p) => daysUntil(nextWaterAt(p)) > 0)
+      .map((plant) => ({ plant, kind: 'water' as const })),
+    ...plants
+      .filter((p) => daysUntil(nextFertilizeAt(p)) > 0)
+      .map((plant) => ({ plant, kind: 'fertilize' as const })),
+  ].sort((a, b) => dueAt(a) - dueAt(b));
 
   const list = tab === 'today' ? dueToday : tab === 'upcoming' ? upcoming : completed;
+
+  // Per-kind daily tallies for the summary bars.
+  const tally = (kind: CareKind) => {
+    const due = dueToday.filter((t) => t.kind === kind).length;
+    const done = completed.filter((t) => t.kind === kind).length;
+    const total = due + done;
+    return { due, done, total, progress: total === 0 ? 0 : done / total };
+  };
+  const water = tally('water');
+  const fertilize = tally('fertilize');
+  const totalToday = water.total + fertilize.total;
 
   const emptyLine =
     tab === 'today'
@@ -96,27 +126,66 @@ export default function ScheduleScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-          {/* Summary card */}
-          {tab === 'today' && (
+          {/* Summary cards: one per care kind */}
+          {tab === 'today' && totalToday === 0 && (
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryDrop}>
+                <IconSymbol name="checkmark" size={24} color={ACTION} />
+              </View>
+              <View style={styles.summaryBody}>
+                <ThemedText style={styles.summaryTitle}>No care needed today</ThemedText>
+                <ThemedText style={styles.summarySub}>Enjoy your plants 🌿</ThemedText>
+              </View>
+            </View>
+          )}
+          {tab === 'today' && water.total > 0 && (
             <View style={styles.summaryCard}>
               <View style={styles.summaryDrop}>
                 <IconSymbol name="drop.fill" size={24} color={ACTION} />
               </View>
               <View style={styles.summaryBody}>
                 <ThemedText style={styles.summaryTitle}>
-                  {dueToday.length === 0
-                    ? totalToday > 0
-                      ? 'All plants watered today'
-                      : 'No watering needed today'
-                    : dueToday.length === 1
+                  {water.due === 0
+                    ? 'All plants watered today'
+                    : water.due === 1
                       ? '1 plant needs water today'
-                      : `${dueToday.length} plants need water today`}
+                      : `${water.due} plants need water today`}
                 </ThemedText>
                 <ThemedText style={styles.summarySub}>
-                  {completed.length} of {Math.max(totalToday, completed.length)} completed
+                  {water.done} of {water.total} completed
                 </ThemedText>
                 <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+                  <View
+                    style={[styles.progressFill, { width: `${Math.round(water.progress * 100)}%` }]}
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+          {tab === 'today' && fertilize.total > 0 && (
+            <View style={[styles.summaryCard, styles.summaryCardFertilize]}>
+              <View style={styles.summaryDrop}>
+                <IconSymbol name="bag.fill" size={22} color="#8B5E3C" />
+              </View>
+              <View style={styles.summaryBody}>
+                <ThemedText style={styles.summaryTitle}>
+                  {fertilize.due === 0
+                    ? 'All plants fertilized today'
+                    : fertilize.due === 1
+                      ? '1 plant needs fertilizer today'
+                      : `${fertilize.due} plants need fertilizer today`}
+                </ThemedText>
+                <ThemedText style={styles.summarySub}>
+                  {fertilize.done} of {fertilize.total} completed
+                </ThemedText>
+                <View style={[styles.progressTrack, styles.progressTrackFertilize]}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      styles.progressFillFertilize,
+                      { width: `${Math.round(fertilize.progress * 100)}%` },
+                    ]}
+                  />
                 </View>
               </View>
             </View>
@@ -129,13 +198,17 @@ export default function ScheduleScreen() {
               <ThemedText style={styles.noTasksText}>{emptyLine}</ThemedText>
             </View>
           ) : (
-            list.map((plant) => (
+            list.map((task) => (
               <TaskCard
-                key={plant.token}
-                plant={plant}
+                key={`${task.plant.token}-${task.kind}`}
+                task={task}
                 mode={tab}
-                onOpen={() => router.push(`/plant/${plant.token}`)}
-                onWater={() => waterPlant(plant.token)}
+                onOpen={() => router.push(`/plant/${task.plant.token}`)}
+                onDone={() =>
+                  task.kind === 'water'
+                    ? waterPlant(task.plant.token)
+                    : fertilizePlant(task.plant.token)
+                }
               />
             ))
           )}
@@ -167,18 +240,20 @@ export default function ScheduleScreen() {
 }
 
 function TaskCard({
-  plant,
+  task,
   mode,
   onOpen,
-  onWater,
+  onDone,
 }: {
-  plant: SavedPlant;
+  task: Task;
   mode: ScheduleTab;
   onOpen: () => void;
-  onWater: () => void;
+  onDone: () => void;
 }) {
+  const { plant, kind } = task;
   const site = getSite(plant.siteId);
-  const days = daysUntil(nextWaterAt(plant));
+  const days = daysUntil(dueAt(task));
+  const isWater = kind === 'water';
 
   let badge: { label: string; color: string } | null = null;
   if (mode === 'today') {
@@ -214,9 +289,15 @@ function TaskCard({
           </View>
         )}
         <View style={styles.metaRow}>
-          <IconSymbol name="clock" size={14} color="#7C877E" />
+          <IconSymbol name={isWater ? 'clock' : 'bag.fill'} size={14} color="#7C877E" />
           <ThemedText style={styles.metaText} numberOfLines={1}>
-            {mode === 'completed' ? 'Watered today' : plant.wateringSummary}
+            {mode === 'completed'
+              ? isWater
+                ? 'Watered today'
+                : 'Fertilized today'
+              : isWater
+                ? plant.wateringSummary
+                : plant.fertilizingSummary}
           </ThemedText>
         </View>
       </View>
@@ -234,10 +315,16 @@ function TaskCard({
 
         {mode === 'today' ? (
           <Pressable
-            onPress={onWater}
-            style={({ pressed }) => [styles.waterButton, pressed && { opacity: 0.85 }]}>
-            <IconSymbol name="drop.fill" size={15} color="#ffffff" />
-            <ThemedText style={styles.waterButtonLabel}>Water now</ThemedText>
+            onPress={onDone}
+            style={({ pressed }) => [
+              styles.waterButton,
+              !isWater && styles.fertilizeButton,
+              pressed && { opacity: 0.85 },
+            ]}>
+            <IconSymbol name={isWater ? 'drop.fill' : 'bag.fill'} size={15} color="#ffffff" />
+            <ThemedText style={styles.waterButtonLabel}>
+              {isWater ? 'Water now' : 'Fertilize'}
+            </ThemedText>
           </Pressable>
         ) : mode === 'completed' ? (
           <View style={styles.doneBadge}>
@@ -348,6 +435,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: 4, backgroundColor: ACTION },
+  summaryCardFertilize: { backgroundColor: '#F3EBDD' },
+  progressTrackFertilize: { backgroundColor: '#E4D4BF' },
+  progressFillFertilize: { backgroundColor: '#8B5E3C' },
 
   // Tasks
   noTasks: {
@@ -391,6 +481,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 16,
   },
+  fertilizeButton: { backgroundColor: '#8B5E3C' },
   waterButtonLabel: { fontFamily: UIFont.bold, fontSize: 13.5, color: '#ffffff' },
   doneBadge: {
     flexDirection: 'row',

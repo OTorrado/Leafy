@@ -1,7 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { PlantSummary } from '@/lib/plants-api';
-import { DAY_MS, parseWateringDays } from '@/lib/watering';
+import {
+  DAY_MS,
+  DEFAULT_FERTILIZE_DAYS,
+  parseFertilizingDays,
+  parseWateringDays,
+} from '@/lib/watering';
 
 const STORAGE_KEY = 'leafy.myplants.v3';
 
@@ -20,6 +25,14 @@ export type SavedPlant = {
   lastWateredAt: number;
   /** Scheduled local-notification id, so it can be cancelled/rescheduled. */
   notificationId?: string;
+  /** Short feeding label, e.g. "Every 4–6 weeks in spring and summer". */
+  fertilizingSummary: string;
+  /** Estimated days between feedings (paused over winter). */
+  fertilizingIntervalDays: number;
+  /** Timestamp of the last feeding (starts at add time). */
+  lastFertilizedAt: number;
+  /** Scheduled fertilize-notification id. */
+  fertilizingNotificationId?: string;
   /** Which site (room) the plant lives in; undefined = unassigned. */
   siteId?: string;
   addedAt: number;
@@ -32,8 +45,12 @@ export function shortenWatering(text?: string): string {
   return clause || 'See care guide';
 }
 
-/** Build a SavedPlant from a catalog summary + (optional) watering text. */
-export function toSavedPlant(plant: PlantSummary, wateringText?: string): SavedPlant {
+/** Build a SavedPlant from a catalog summary + (optional) care texts. */
+export function toSavedPlant(
+  plant: PlantSummary,
+  wateringText?: string,
+  fertilizingText?: string,
+): SavedPlant {
   const now = Date.now();
   const wateringIntervalDays = parseWateringDays(wateringText);
   return {
@@ -48,6 +65,13 @@ export function toSavedPlant(plant: PlantSummary, wateringText?: string): SavedP
     // Back-date the last watering by one interval so the plant is due to be
     // watered on the day it's added; the cycle then repeats every interval.
     lastWateredAt: now - wateringIntervalDays * DAY_MS,
+    fertilizingSummary: fertilizingText
+      ? shortenWatering(fertilizingText)
+      : 'Every 6 weeks in the growing season',
+    fertilizingIntervalDays: parseFertilizingDays(fertilizingText),
+    // Back-dated like watering, so the first feeding is due on the add day
+    // and the cycle repeats every interval from there.
+    lastFertilizedAt: now - parseFertilizingDays(fertilizingText) * DAY_MS,
     addedAt: now,
   };
 }
@@ -55,7 +79,24 @@ export function toSavedPlant(plant: PlantSummary, wateringText?: string): SavedP
 export async function loadMyPlants(): Promise<SavedPlant[]> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as SavedPlant[]) : [];
+    const stored = raw ? (JSON.parse(raw) as SavedPlant[]) : [];
+    // Migrate plants saved before fertilizing existed.
+    return stored.map((p) => {
+      if (!p.fertilizingIntervalDays) {
+        return {
+          ...p,
+          fertilizingSummary: 'Every 6 weeks in the growing season',
+          fertilizingIntervalDays: DEFAULT_FERTILIZE_DAYS,
+          lastFertilizedAt: p.addedAt - DEFAULT_FERTILIZE_DAYS * DAY_MS,
+        };
+      }
+      // Never fed since being added (old scheme): back-date so the first
+      // feeding is due immediately rather than one interval after adding.
+      if (p.lastFertilizedAt === p.addedAt) {
+        return { ...p, lastFertilizedAt: p.addedAt - p.fertilizingIntervalDays * DAY_MS };
+      }
+      return p;
+    });
   } catch {
     return [];
   }

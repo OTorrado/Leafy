@@ -42,6 +42,9 @@ const MAPPING = {
   'calendar': 'calendar-today',
   'clock': 'schedule',
   'checkmark.circle': 'check-circle',
+  'sparkles': 'auto-awesome',
+  'flask.fill': 'science',
+  'bag.fill': 'shopping-bag',
 } as IconMapping;
 
 /**

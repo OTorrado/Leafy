@@ -1,14 +1,16 @@
 import type { SavedPlant } from '@/lib/my-plants';
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_INTERVAL_DAYS = 7;
+const DEFAULT_WATER_DAYS = 7;
+/** Rule-of-thumb feeding cadence when a plant has no specific guidance. */
+export const DEFAULT_FERTILIZE_DAYS = 42;
 
 /**
- * Estimate a watering interval (in days) from a care sentence such as
- * "Every 1–2 weeks…" or "About once a week…". Falls back to a weekly cadence.
+ * Estimate a cadence in days from a care sentence such as "Every 1–2 weeks…"
+ * or "About once a week…". Returns null when there is no text to parse.
  */
-export function parseWateringDays(text?: string): number {
-  if (!text) return DEFAULT_INTERVAL_DAYS;
+function parseCadenceDays(text?: string): number | null {
+  if (!text) return null;
   const t = text.toLowerCase();
 
   const range = t.match(/(\d+)\s*[–-]\s*(\d+)/);
@@ -26,9 +28,36 @@ export function parseWateringDays(text?: string): number {
   return Math.max(1, Math.round(amount * unit));
 }
 
+export function parseWateringDays(text?: string): number {
+  return parseCadenceDays(text) ?? DEFAULT_WATER_DAYS;
+}
+
+export function parseFertilizingDays(text?: string): number {
+  return parseCadenceDays(text) ?? DEFAULT_FERTILIZE_DAYS;
+}
+
 /** Timestamp (ms) when the plant is next due for watering. */
 export function nextWaterAt(plant: SavedPlant): number {
   return plant.lastWateredAt + plant.wateringIntervalDays * DAY_MS;
+}
+
+/**
+ * Feeding pauses over winter: dates landing in Nov–Feb roll forward to the
+ * start of the growing season (Mar 1).
+ */
+export function deferToGrowingSeason(timestamp: number): number {
+  const d = new Date(timestamp);
+  const month = d.getMonth();
+  if (month >= 10) return new Date(d.getFullYear() + 1, 2, 1).getTime(); // Nov, Dec
+  if (month <= 1) return new Date(d.getFullYear(), 2, 1).getTime(); // Jan, Feb
+  return timestamp;
+}
+
+/** Timestamp (ms) when the plant is next due for fertilizing. */
+export function nextFertilizeAt(plant: SavedPlant): number {
+  return deferToGrowingSeason(
+    plant.lastFertilizedAt + plant.fertilizingIntervalDays * DAY_MS,
+  );
 }
 
 /** Midnight (local) of the given timestamp. */
@@ -70,6 +99,30 @@ export function wateringDaysInMonth(
     const t = base + k * interval;
     if (t > monthEnd) break;
     if (t >= monthStart) days.push(t);
+  }
+  return days;
+}
+
+/**
+ * The days this plant should be fertilized within a given month. Same idea as
+ * watering, but each step defers across the winter pause. Returns midnight
+ * timestamps.
+ */
+export function fertilizeDaysInMonth(
+  plant: SavedPlant,
+  year: number,
+  month: number,
+): number[] {
+  const interval = plant.fertilizingIntervalDays * DAY_MS;
+  const today = startOfDay(Date.now());
+  const monthEnd = startOfDay(new Date(year, month + 1, 0).getTime());
+  const monthStart = startOfDay(new Date(year, month, 1).getTime());
+
+  const days: number[] = [];
+  let t = Math.max(startOfDay(nextFertilizeAt(plant)), today);
+  for (let guard = 0; guard < 120 && t <= monthEnd; guard++) {
+    if (t >= monthStart) days.push(t);
+    t = startOfDay(deferToGrowingSeason(t + interval));
   }
   return days;
 }

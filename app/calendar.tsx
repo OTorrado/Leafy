@@ -9,13 +9,15 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Brand, UIFont } from '@/constants/theme';
 import type { SavedPlant } from '@/lib/my-plants';
-import { startOfDay, wateringDaysInMonth } from '@/lib/watering';
+import { fertilizeDaysInMonth, startOfDay, wateringDaysInMonth } from '@/lib/watering';
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
+type CalendarTask = { plant: SavedPlant; kind: 'water' | 'fertilize' };
+
 export default function CalendarScreen() {
   const router = useRouter();
-  const { plants, waterPlant } = useMyPlants();
+  const { plants, waterPlant, fertilizePlant } = useMyPlants();
 
   const today = startOfDay(Date.now());
   const [viewMonth, setViewMonth] = useState(() => {
@@ -24,14 +26,20 @@ export default function CalendarScreen() {
   });
   const [selected, setSelected] = useState(today);
 
-  // Bucket every plant's watering days for the visible month by day.
+  // Bucket every plant's care days for the visible month by day.
   const dayTasks = useMemo(() => {
-    const map = new Map<number, SavedPlant[]>();
+    const map = new Map<number, CalendarTask[]>();
+    const push = (day: number, task: CalendarTask) => {
+      const list = map.get(day) ?? [];
+      list.push(task);
+      map.set(day, list);
+    };
     for (const plant of plants) {
       for (const day of wateringDaysInMonth(plant, viewMonth.year, viewMonth.month)) {
-        const list = map.get(day) ?? [];
-        list.push(plant);
-        map.set(day, list);
+        push(day, { plant, kind: 'water' });
+      }
+      for (const day of fertilizeDaysInMonth(plant, viewMonth.year, viewMonth.month)) {
+        push(day, { plant, kind: 'fertilize' });
       }
     }
     return map;
@@ -153,46 +161,69 @@ export default function CalendarScreen() {
           {selectedTasks.length === 0 ? (
             <View style={styles.noTasks}>
               <IconSymbol name="checkmark" size={18} color="#1a9e73" />
-              <ThemedText style={styles.noTasksText}>Nothing to water</ThemedText>
+              <ThemedText style={styles.noTasksText}>Nothing to do</ThemedText>
             </View>
           ) : (
-            selectedTasks.map((plant) => (
-              <View key={plant.token} style={styles.taskRow}>
-                <Pressable
-                  style={styles.taskMain}
-                  onPress={() => router.push(`/plant/${plant.token}`)}>
-                  <PlantImage
-                    uri={plant.imageUrl}
-                    emoji={plant.emoji}
-                    tint={plant.tint}
-                    emojiSize={24}
-                    style={styles.thumb}
-                  />
-                  <View style={styles.taskText}>
-                    <ThemedText style={styles.taskName} numberOfLines={1}>
-                      {plant.commonName}
-                    </ThemedText>
-                    <ThemedText style={styles.taskSub}>
-                      {canWater ? 'Needs watering' : 'Scheduled watering'}
-                    </ThemedText>
-                  </View>
-                </Pressable>
-
-                {canWater ? (
+            selectedTasks.map(({ plant, kind }) => {
+              const isWater = kind === 'water';
+              return (
+                <View key={`${plant.token}-${kind}`} style={styles.taskRow}>
                   <Pressable
-                    onPress={() => waterPlant(plant.token)}
-                    hitSlop={8}
-                    accessibilityLabel={`Mark ${plant.commonName} watered`}
-                    style={({ pressed }) => [styles.waterButton, pressed && { opacity: 0.7 }]}>
-                    <IconSymbol name="drop.fill" size={20} color="#3E7BFA" />
+                    style={styles.taskMain}
+                    onPress={() => router.push(`/plant/${plant.token}`)}>
+                    <PlantImage
+                      uri={plant.imageUrl}
+                      emoji={plant.emoji}
+                      tint={plant.tint}
+                      emojiSize={24}
+                      style={styles.thumb}
+                    />
+                    <View style={styles.taskText}>
+                      <ThemedText style={styles.taskName} numberOfLines={1}>
+                        {plant.commonName}
+                      </ThemedText>
+                      <ThemedText style={styles.taskSub}>
+                        {isWater
+                          ? canWater
+                            ? 'Needs watering'
+                            : 'Scheduled watering'
+                          : canWater
+                            ? 'Needs fertilizing'
+                            : 'Scheduled fertilizing'}
+                      </ThemedText>
+                    </View>
                   </Pressable>
-                ) : (
-                  <View style={styles.scheduledBadge}>
-                    <IconSymbol name="drop.fill" size={16} color="#8FA69B" />
-                  </View>
-                )}
-              </View>
-            ))
+
+                  {canWater ? (
+                    <Pressable
+                      onPress={() =>
+                        isWater ? waterPlant(plant.token) : fertilizePlant(plant.token)
+                      }
+                      hitSlop={8}
+                      accessibilityLabel={`Mark ${plant.commonName} ${isWater ? 'watered' : 'fertilized'}`}
+                      style={({ pressed }) => [
+                        styles.waterButton,
+                        !isWater && styles.fertilizeButton,
+                        pressed && { opacity: 0.7 },
+                      ]}>
+                      <IconSymbol
+                        name={isWater ? 'drop.fill' : 'bag.fill'}
+                        size={20}
+                        color={isWater ? '#3E7BFA' : '#8B5E3C'}
+                      />
+                    </Pressable>
+                  ) : (
+                    <View style={styles.scheduledBadge}>
+                      <IconSymbol
+                        name={isWater ? 'drop.fill' : 'bag.fill'}
+                        size={16}
+                        color="#8FA69B"
+                      />
+                    </View>
+                  )}
+                </View>
+              );
+            })
           )}
         </ScrollView>
       </View>
@@ -298,6 +329,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  fertilizeButton: { backgroundColor: '#F3EBDD' },
   scheduledBadge: {
     width: 44,
     height: 44,

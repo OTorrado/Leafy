@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 
 import type { SavedPlant } from '@/lib/my-plants';
-import { nextWaterAt } from '@/lib/watering';
+import { nextFertilizeAt, nextWaterAt } from '@/lib/watering';
 
 /**
  * Controls how notifications appear while the app is foregrounded.
@@ -70,7 +70,34 @@ export async function scheduleWateringReminder(plant: SavedPlant): Promise<strin
   });
 }
 
-/** Cancel a previously scheduled reminder. */
+/**
+ * Schedule a one-time fertilizing reminder for a plant at its next feed date.
+ * Returns the notification id, or undefined if not scheduled.
+ */
+export async function scheduleFertilizingReminder(plant: SavedPlant): Promise<string | undefined> {
+  const permission = await Notifications.getPermissionsAsync();
+  const allowed =
+    permission.granted ||
+    permission.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+  if (!allowed) return undefined;
+
+  const date = new Date(nextFertilizeAt(plant));
+  if (date.getTime() <= Date.now()) return undefined; // already due; shown in-app instead
+
+  return Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Time to fertilize 🌱',
+      body: `${plant.commonName} could use some plant food.`,
+      data: { token: plant.token },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date,
+    },
+  });
+}
+
+/** Cancel a previously scheduled reminder (watering or fertilizing). */
 export async function cancelWateringReminder(notificationId?: string): Promise<void> {
   if (!notificationId) return;
   try {
