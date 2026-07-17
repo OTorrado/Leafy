@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown, FadeOutUp, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddPlantSheet } from '@/components/add-plant-sheet';
@@ -27,7 +28,6 @@ const TABS: { key: ScheduleTab; label: string; icon: 'leaf.fill' | 'calendar' | 
 
 // Muted botanical palette for this screen, matching the design.
 const INK = '#2C4A36'; // deep green (title)
-const CREAM = '#F7F5EF'; // page background
 const PILL = '#41603F'; // active tab pill
 const ACTION = '#6F8F55'; // water-now / fab olive green
 const ORANGE = '#E8930C';
@@ -56,14 +56,17 @@ export default function ScheduleScreen() {
       .filter((p) => !fertilizedToday(p) && daysUntil(nextFertilizeAt(p)) <= 0)
       .map((plant) => ({ plant, kind: 'fertilize' as const })),
   ];
-  const upcoming: Task[] = [
-    ...plants
-      .filter((p) => daysUntil(nextWaterAt(p)) > 0)
-      .map((plant) => ({ plant, kind: 'water' as const })),
-    ...plants
-      .filter((p) => daysUntil(nextFertilizeAt(p)) > 0)
-      .map((plant) => ({ plant, kind: 'fertilize' as const })),
-  ].sort((a, b) => dueAt(a) - dueAt(b));
+  // One entry per plant: only its soonest upcoming task.
+  const upcoming: Task[] = plants
+    .map((plant) => {
+      const candidates: Task[] = [];
+      if (daysUntil(nextWaterAt(plant)) > 0) candidates.push({ plant, kind: 'water' });
+      if (daysUntil(nextFertilizeAt(plant)) > 0) candidates.push({ plant, kind: 'fertilize' });
+      if (candidates.length === 0) return null;
+      return candidates.reduce((a, b) => (dueAt(a) <= dueAt(b) ? a : b));
+    })
+    .filter((t): t is Task => t !== null)
+    .sort((a, b) => dueAt(a) - dueAt(b));
 
   const list = tab === 'today' ? dueToday : tab === 'upcoming' ? upcoming : completed;
 
@@ -79,13 +82,7 @@ export default function ScheduleScreen() {
   const totalToday = water.total + fertilize.total;
 
   const emptyLine =
-    tab === 'today'
-      ? totalToday > 0
-        ? 'All watered — nice work! 🌿'
-        : 'Nothing needs water today'
-      : tab === 'upcoming'
-        ? 'No upcoming waterings yet'
-        : 'Nothing watered today yet';
+    tab === 'upcoming' ? 'No upcoming care yet' : 'Nothing completed today yet';
 
   return (
     <View style={styles.root}>
@@ -126,30 +123,38 @@ export default function ScheduleScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-          {/* Summary cards: one per care kind */}
-          {tab === 'today' && totalToday === 0 && (
-            <View style={styles.summaryCard}>
+          {/* Summary cards: one per care kind; each slides away once its tasks are done. */}
+          {tab === 'today' && dueToday.length === 0 && (
+            <Animated.View
+              entering={FadeInDown.duration(300)}
+              exiting={FadeOutUp.duration(250)}
+              layout={LinearTransition.duration(250)}
+              style={styles.summaryCard}>
               <View style={styles.summaryDrop}>
                 <IconSymbol name="checkmark" size={24} color={ACTION} />
               </View>
               <View style={styles.summaryBody}>
-                <ThemedText style={styles.summaryTitle}>No care needed today</ThemedText>
+                <ThemedText style={styles.summaryTitle}>
+                  {totalToday > 0 ? 'All done for today 🎉' : 'No care needed today'}
+                </ThemedText>
                 <ThemedText style={styles.summarySub}>Enjoy your plants 🌿</ThemedText>
               </View>
-            </View>
+            </Animated.View>
           )}
-          {tab === 'today' && water.total > 0 && (
-            <View style={styles.summaryCard}>
+          {tab === 'today' && water.due > 0 && (
+            <Animated.View
+              entering={FadeInDown.duration(300)}
+              exiting={FadeOutUp.duration(250)}
+              layout={LinearTransition.duration(250)}
+              style={styles.summaryCard}>
               <View style={styles.summaryDrop}>
                 <IconSymbol name="drop.fill" size={24} color={ACTION} />
               </View>
               <View style={styles.summaryBody}>
                 <ThemedText style={styles.summaryTitle}>
-                  {water.due === 0
-                    ? 'All plants watered today'
-                    : water.due === 1
-                      ? '1 plant needs water today'
-                      : `${water.due} plants need water today`}
+                  {water.due === 1
+                    ? '1 plant needs water today'
+                    : `${water.due} plants need water today`}
                 </ThemedText>
                 <ThemedText style={styles.summarySub}>
                   {water.done} of {water.total} completed
@@ -160,20 +165,22 @@ export default function ScheduleScreen() {
                   />
                 </View>
               </View>
-            </View>
+            </Animated.View>
           )}
-          {tab === 'today' && fertilize.total > 0 && (
-            <View style={[styles.summaryCard, styles.summaryCardFertilize]}>
+          {tab === 'today' && fertilize.due > 0 && (
+            <Animated.View
+              entering={FadeInDown.duration(300)}
+              exiting={FadeOutUp.duration(250)}
+              layout={LinearTransition.duration(250)}
+              style={[styles.summaryCard, styles.summaryCardFertilize]}>
               <View style={styles.summaryDrop}>
                 <IconSymbol name="bag.fill" size={22} color="#8B5E3C" />
               </View>
               <View style={styles.summaryBody}>
                 <ThemedText style={styles.summaryTitle}>
-                  {fertilize.due === 0
-                    ? 'All plants fertilized today'
-                    : fertilize.due === 1
-                      ? '1 plant needs fertilizer today'
-                      : `${fertilize.due} plants need fertilizer today`}
+                  {fertilize.due === 1
+                    ? '1 plant needs fertilizer today'
+                    : `${fertilize.due} plants need fertilizer today`}
                 </ThemedText>
                 <ThemedText style={styles.summarySub}>
                   {fertilize.done} of {fertilize.total} completed
@@ -188,28 +195,35 @@ export default function ScheduleScreen() {
                   />
                 </View>
               </View>
-            </View>
+            </Animated.View>
           )}
 
-          {/* Task list */}
+          {/* Task list (Today's empty state is covered by the summary cards) */}
           {list.length === 0 ? (
-            <View style={styles.noTasks}>
-              <IconSymbol name="checkmark" size={18} color={ACTION} />
-              <ThemedText style={styles.noTasksText}>{emptyLine}</ThemedText>
-            </View>
+            tab !== 'today' && (
+              <View style={styles.noTasks}>
+                <IconSymbol name="checkmark" size={18} color={ACTION} />
+                <ThemedText style={styles.noTasksText}>{emptyLine}</ThemedText>
+              </View>
+            )
           ) : (
             list.map((task) => (
-              <TaskCard
+              <Animated.View
                 key={`${task.plant.token}-${task.kind}`}
-                task={task}
-                mode={tab}
-                onOpen={() => router.push(`/plant/${task.plant.token}`)}
-                onDone={() =>
-                  task.kind === 'water'
-                    ? waterPlant(task.plant.token)
-                    : fertilizePlant(task.plant.token)
-                }
-              />
+                entering={FadeInDown.duration(250)}
+                exiting={FadeOutUp.duration(220)}
+                layout={LinearTransition.duration(250)}>
+                <TaskCard
+                  task={task}
+                  mode={tab}
+                  onOpen={() => router.push(`/plant/${task.plant.token}`)}
+                  onDone={() =>
+                    task.kind === 'water'
+                      ? waterPlant(task.plant.token)
+                      : fertilizePlant(task.plant.token)
+                  }
+                />
+              </Animated.View>
             ))
           )}
         </ScrollView>
@@ -338,7 +352,7 @@ function TaskCard({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: CREAM },
+  root: { flex: 1, backgroundColor: '#ffffff' },
   safe: { flex: 1, paddingHorizontal: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 8 },
   headerText: { flex: 1 },
@@ -363,10 +377,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#3A4A35',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: '#1F2D22',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 0 },
     elevation: 2,
   },
 
@@ -377,10 +391,10 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     padding: 5,
     marginTop: 16,
-    shadowColor: '#3A4A35',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: '#1F2D22',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 0 },
     elevation: 2,
   },
   segSlot: { flex: 1, flexDirection: 'row', alignItems: 'center' },
@@ -408,6 +422,11 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 18,
     marginBottom: 16,
+    shadowColor: '#1F2D22',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 2,
   },
   summaryDrop: {
     width: 58,
@@ -455,10 +474,10 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 12,
     marginBottom: 14,
-    shadowColor: '#3A4A35',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#1F2D22',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 0 },
     elevation: 2,
   },
   taskThumb: { width: 92, height: 92, borderRadius: 16 },
