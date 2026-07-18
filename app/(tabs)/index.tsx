@@ -89,6 +89,7 @@ export default function MyPlantsScreen() {
             data={activeSites}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
+            style={styles.listBox}
             contentContainerStyle={styles.listContent}
             ListFooterComponent={
               <Pressable
@@ -128,6 +129,7 @@ export default function MyPlantsScreen() {
             data={plants}
             keyExtractor={(item) => item.token}
             showsVerticalScrollIndicator={false}
+            style={styles.listBox}
             contentContainerStyle={styles.listContent}
             renderItem={({ item }) => {
               const site = getSite(item.siteId);
@@ -339,8 +341,10 @@ const styles = StyleSheet.create({
   siteName: { fontFamily: UIFont.semibold, fontSize: 16, lineHeight: 21, color: '#14281B' },
   siteCount: { fontFamily: UIFont.medium, fontSize: 12.5, lineHeight: 17, color: '#8A958D' },
 
-  // List of plant cards
-  listContent: { paddingTop: 16, paddingBottom: 24 },
+  // Full-bleed lists with padding inside, so card side-shadows aren't clipped
+  // at the list's bounds.
+  listBox: { marginHorizontal: -14 },
+  listContent: { paddingTop: 16, paddingBottom: 24, paddingHorizontal: 14 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

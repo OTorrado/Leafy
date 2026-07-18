@@ -122,7 +122,10 @@ export default function ScheduleScreen() {
           })}
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={styles.scrollBox}
+          contentContainerStyle={styles.scroll}>
           {/* Summary cards: one per care kind; each slides away once its tasks are done. */}
           {tab === 'today' && dueToday.length === 0 && (
             <Animated.View
@@ -412,7 +415,10 @@ const styles = StyleSheet.create({
   segText: { fontFamily: UIFont.semibold, fontSize: 13.5, color: '#69766B' },
   segTextActive: { color: '#ffffff' },
 
-  scroll: { paddingTop: 16, paddingBottom: 110 },
+  // Full-bleed scroll area with padding inside, so card side-shadows aren't
+  // clipped at the scroll view's bounds.
+  scrollBox: { marginHorizontal: -16 },
+  scroll: { paddingTop: 16, paddingBottom: 110, paddingHorizontal: 16 },
 
   // Summary card
   summaryCard: {

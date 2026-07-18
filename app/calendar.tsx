@@ -102,7 +102,10 @@ export default function CalendarScreen() {
     <ThemedView style={styles.root}>
       <Stack.Screen options={{ title: 'Calendar' }} />
       <View style={styles.safe}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={styles.scrollBox}
+          contentContainerStyle={styles.scroll}>
           {/* Month navigation */}
           <View style={styles.monthRow}>
             <Pressable onPress={() => changeMonth(-1)} hitSlop={10} style={styles.monthArrow}>
@@ -242,7 +245,10 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     marginBottom: 8,
   },
-  scroll: { paddingBottom: 24 },
+  // Full-bleed scroll area with padding inside, so card side-shadows aren't
+  // clipped at the scroll view's bounds.
+  scrollBox: { marginHorizontal: -16 },
+  scroll: { paddingBottom: 24, paddingHorizontal: 16 },
 
   // Calendar
   monthRow: {
